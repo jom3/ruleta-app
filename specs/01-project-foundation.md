@@ -1,6 +1,6 @@
 # SPEC 01 — Project foundation, database client and test harness
 
-> **Status:** Approved
+> **Status:** Implemented
 > **Depends on:** None
 > **Date:** 2026-11-11
 > **Objective:** Dejar un proyecto Astro+TypeScript desplegable en Vercel que hable con Neon por Drizzle y ejecute Vitest.
