@@ -1,14 +1,253 @@
 ---
-import AppHeader from '../../components/AppHeader.astro'
-import BaseLayout from '../../layouts/BaseLayout.astro'
+import { actions } from 'astro:actions'
+import AppLayout from '../../layouts/AppLayout.astro'
+import { listByUser } from '../../db/categories'
 
 const user = Astro.locals.user!
+const categories = await listByUser(user.id)
+
+const createResult = Astro.getActionResult(actions.createCategory)
+const createError = createResult?.error?.message ?? ''
 ---
 
-<BaseLayout title="Mis categorías">
-  <AppHeader email={user.email} />
+<AppLayout title="Mis categorías" user={user}>
   <main>
     <h1>Mis categorías</h1>
-    <p>Aún no tienes categorías. La gestión llega en el siguiente paso.</p>
+
+    <form id="create-form" class="create-form" method="POST" action={actions.createCategory}>
+      <label for="category-name">Nueva categoría</label>
+      <div class="create-form__row">
+        <input
+          id="category-name"
+          name="name"
+          type="text"
+          maxlength="40"
+          autocomplete="off"
+          required
+        />
+        <button type="submit" id="create-submit">Crear</button>
+      </div>
+      <p class="form-error" id="create-error" role="alert">{createError}</p>
+    </form>
+
+    <p class="empty-state" id="empty-state" hidden={categories.length > 0}>
+      Crea tu primera categoría para empezar
+    </p>
+
+    <ul class="category-list" id="category-list" hidden={categories.length === 0}>
+      {
+        categories.map((category) => (
+          <li class="category" data-id={category.id} data-key={category.name.toLowerCase()}>
+            <a class="category__name" href={`/app/categories/${category.id}`}>{category.name}</a>
+            <button type="button" class="secondary category__delete" data-delete={category.id}>
+              Borrar
+            </button>
+          </li>
+        ))
+      }
+    </ul>
+
+    <template id="category-template">
+      <li class="category">
+        <a class="category__name"></a>
+        <button type="button" class="secondary category__delete">Borrar</button>
+      </li>
+    </template>
+
+    <dialog id="delete-dialog" class="confirm-dialog">
+      <p>¿Borrar <strong id="delete-name"></strong>? También se eliminarán sus elementos y giros.</p>
+      <div class="confirm-dialog__actions">
+        <button type="button" class="secondary" id="delete-cancel">Cancelar</button>
+        <button type="button" id="delete-confirm">Borrar</button>
+      </div>
+    </dialog>
   </main>
-</BaseLayout>
+</AppLayout>
+
+<style>
+  .create-form__row {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .create-form__row input {
+    margin-bottom: 0;
+    min-width: 0;
+  }
+
+  .create-form__row button {
+    width: auto;
+    flex-shrink: 0;
+  }
+
+  .empty-state {
+    padding: var(--space-6);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-muted);
+    text-align: center;
+  }
+
+  .category-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .category {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+  }
+
+  .category__name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .category__name:hover {
+    color: var(--color-accent);
+  }
+
+  .category__delete {
+    width: auto;
+    flex-shrink: 0;
+    padding: var(--space-1) var(--space-3);
+    font-size: 0.875rem;
+  }
+
+  .confirm-dialog {
+    max-width: min(90vw, 24rem);
+    padding: var(--space-6);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  .confirm-dialog::backdrop {
+    background: rgb(0 0 0 / 0.6);
+  }
+
+  .confirm-dialog__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+
+  .confirm-dialog__actions button {
+    width: auto;
+  }
+</style>
+
+<script>
+  import { actions } from 'astro:actions'
+
+  const form = document.querySelector<HTMLFormElement>('#create-form')!
+  const input = document.querySelector<HTMLInputElement>('#category-name')!
+  const submitButton = document.querySelector<HTMLButtonElement>('#create-submit')!
+  const errorBox = document.querySelector<HTMLParagraphElement>('#create-error')!
+  const list = document.querySelector<HTMLUListElement>('#category-list')!
+  const emptyState = document.querySelector<HTMLParagraphElement>('#empty-state')!
+  const template = document.querySelector<HTMLTemplateElement>('#category-template')!
+  const dialog = document.querySelector<HTMLDialogElement>('#delete-dialog')!
+  const deleteName = document.querySelector<HTMLElement>('#delete-name')!
+  const deleteConfirm = document.querySelector<HTMLButtonElement>('#delete-confirm')!
+  const deleteCancel = document.querySelector<HTMLButtonElement>('#delete-cancel')!
+
+  let pendingDelete: { id: string; item: HTMLLIElement } | null = null
+
+  function toggleEmptyState(): void {
+    const isEmpty = list.children.length === 0
+    emptyState.hidden = !isEmpty
+    list.hidden = isEmpty
+  }
+
+  function buildItem(category: { id: string; name: string }): HTMLLIElement {
+    const item = template.content.firstElementChild!.cloneNode(true) as HTMLLIElement
+    item.dataset.id = category.id
+    item.dataset.key = category.name.toLowerCase()
+
+    const link = item.querySelector<HTMLAnchorElement>('.category__name')!
+    link.href = `/app/categories/${category.id}`
+    link.textContent = category.name
+
+    item.querySelector<HTMLButtonElement>('.category__delete')!.dataset.delete = category.id
+    return item
+  }
+
+  function insertItem(category: { id: string; name: string }): void {
+    const item = buildItem(category)
+    const key = category.name.toLowerCase()
+    const next = [...list.children].find(
+      (child) => ((child as HTMLLIElement).dataset.key ?? '') > key,
+    )
+
+    list.insertBefore(item, next ?? null)
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    errorBox.textContent = ''
+    submitButton.disabled = true
+
+    const { data, error } = await actions.createCategory({ name: input.value })
+
+    submitButton.disabled = false
+
+    if (error) {
+      errorBox.textContent = error.message
+      input.focus()
+      return
+    }
+
+    insertItem(data)
+    form.reset()
+    toggleEmptyState()
+    input.focus()
+  })
+
+  list.addEventListener('click', (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-delete]')
+    const item = button?.closest<HTMLLIElement>('.category')
+    if (!button || !item) return
+
+    pendingDelete = { id: button.dataset.delete!, item }
+    deleteName.textContent = item.querySelector('.category__name')?.textContent ?? ''
+    dialog.showModal()
+  })
+
+  deleteCancel.addEventListener('click', () => {
+    pendingDelete = null
+    dialog.close()
+  })
+
+  deleteConfirm.addEventListener('click', async () => {
+    if (!pendingDelete) return
+
+    deleteConfirm.disabled = true
+    const { error } = await actions.deleteCategory({ id: pendingDelete.id })
+    deleteConfirm.disabled = false
+
+    if (error) {
+      dialog.close()
+      errorBox.textContent = error.message
+      return
+    }
+
+    pendingDelete.item.remove()
+    pendingDelete = null
+    dialog.close()
+    toggleEmptyState()
+  })
+</script>
