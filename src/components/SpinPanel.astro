@@ -1,0 +1,287 @@
+---
+import Wheel from './Wheel.astro'
+
+interface Props {
+  categoryId: string
+  elements: { id: string; name: string }[]
+}
+
+const { categoryId, elements } = Astro.props
+const canSpin = elements.length >= 2
+---
+
+<section class="spin-panel" data-category-id={categoryId}>
+  <Wheel elements={elements} />
+
+  <button type="button" id="spin-button" disabled={!canSpin}>Girar</button>
+
+  <p class="spin-warning" id="spin-warning" hidden={canSpin}>
+    Añade al menos 2 elementos para poder girar
+  </p>
+
+  <p class="spin-status" id="spin-status" role="status" aria-live="polite"></p>
+  <p class="spin-result" id="spin-result" aria-live="polite"></p>
+
+  <ul class="spin-legend" aria-label="Nombres de los elementos de la ruleta">
+    {elements.map((element) => <li>{element.name}</li>)}
+  </ul>
+</section>
+
+<style>
+  .spin-panel {
+    margin-bottom: var(--space-6);
+  }
+
+  .spin-warning {
+    margin: var(--space-2) 0 0;
+    color: var(--color-muted);
+    font-size: 0.875rem;
+    text-align: center;
+  }
+
+  .spin-status {
+    margin: var(--space-2) 0 0;
+    color: var(--color-muted);
+    font-size: 0.875rem;
+    text-align: center;
+  }
+
+  .spin-result {
+    margin: var(--space-2) 0 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  .spin-result:empty {
+    display: none;
+  }
+
+  .spin-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-1) var(--space-3);
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    list-style: none;
+    color: var(--color-muted);
+    font-size: 0.8125rem;
+  }
+
+  .spin-legend li {
+    overflow-wrap: anywhere;
+  }
+</style>
+
+<script>
+  type SpinResponse = {
+    spinId: string
+    element: { id: string; name: string }
+    variant: { id: string; name: string } | null
+  }
+
+  const SPIN_DURATION = 4000
+  const FULL_TURNS = 4
+
+  const panel = document.querySelector<HTMLElement>('.spin-panel')
+  const svg = panel?.querySelector<SVGSVGElement>('.wheel__svg')
+  const disc = panel?.querySelector<SVGGElement>('.wheel__disc')
+  const emptyRing = panel?.querySelector<SVGCircleElement>('.wheel__empty')
+  const legend = panel?.querySelector<HTMLUListElement>('.spin-legend')
+  const button = panel?.querySelector<HTMLButtonElement>('#spin-button')
+  const warning = panel?.querySelector<HTMLParagraphElement>('#spin-warning')
+  const status = panel?.querySelector<HTMLParagraphElement>('#spin-status')
+  const result = panel?.querySelector<HTMLParagraphElement>('#spin-result')
+
+  if (
+    !panel?.dataset.categoryId ||
+    !svg ||
+    !disc ||
+    !emptyRing ||
+    !legend ||
+    !button ||
+    !warning ||
+    !status ||
+    !result
+  ) {
+    throw new Error('Faltan nodos del DOM para girar')
+  }
+
+  const categoryId = panel.dataset.categoryId
+  const meta = window.matchMedia('(prefers-reduced-motion: reduce)')
+  const SVG_NS = 'http://www.w3.org/2000/svg'
+
+  let spinning = false
+  let rotation = 0
+  let elementCount = disc.querySelectorAll('[data-element-id]').length
+
+  function setEnabled(): void {
+    const canSpin = elementCount >= 2
+    warning.hidden = canSpin
+    button.disabled = !canSpin || spinning
+  }
+
+  // Misma geometría que la rueda renderizada en el servidor, para redibujarla
+  // cuando la lista de elementos cambia sin recargar la página.
+  function pointAt(angle: number, radius: number): { x: number; y: number } {
+    const radians = (angle * Math.PI) / 180
+    return { x: 100 + radius * Math.sin(radians), y: 100 - radius * Math.cos(radians) }
+  }
+
+  function segmentPath(index: number, step: number): string {
+    const start = pointAt(index * step, 100)
+    const end = pointAt((index + 1) * step, 100)
+    const largeArc = step > 180 ? 1 : 0
+
+    return `M 100 100 L ${start.x} ${start.y} A 100 100 0 ${largeArc} 1 ${end.x} ${end.y} Z`
+  }
+
+  function renderWheel(elements: { id: string; name: string }[]): void {
+    const step = elements.length > 0 ? 360 / elements.length : 360
+
+    disc.replaceChildren()
+
+    elements.forEach((element, index) => {
+      const angle = (index + 0.5) * step
+      const label = pointAt(angle, 62)
+
+      const group = document.createElementNS(SVG_NS, 'g') as SVGGElement
+      group.dataset.elementId = element.id
+
+      const title = document.createElementNS(SVG_NS, 'title')
+      title.textContent = element.name
+
+      const path = document.createElementNS(SVG_NS, 'path')
+      path.setAttribute('d', segmentPath(index, step))
+      path.setAttribute('fill', `var(--wheel-${(index % 6) + 1})`)
+
+      const text = document.createElementNS(SVG_NS, 'text')
+      text.setAttribute('class', 'wheel__label')
+      text.setAttribute('x', label.x.toFixed(2))
+      text.setAttribute('y', label.y.toFixed(2))
+      text.setAttribute(
+        'transform',
+        `rotate(${angle.toFixed(2)} ${label.x.toFixed(2)} ${label.y.toFixed(2)})`,
+      )
+      text.setAttribute('text-anchor', 'middle')
+      text.setAttribute('dominant-baseline', 'middle')
+      text.textContent = element.name.length > 12 ? `${element.name.slice(0, 11)}…` : element.name
+
+      group.append(title, path, text)
+      disc.append(group)
+    })
+
+    emptyRing.style.display = elements.length > 0 ? 'none' : ''
+    const word = elements.length === 1 ? 'elemento' : 'elementos'
+    svg.setAttribute('aria-label', `Ruleta con ${elements.length} ${word}`)
+  }
+
+  function renderLegend(elements: { id: string; name: string }[]): void {
+    const items = elements.map((element) => {
+      const item = document.createElement('li')
+      item.textContent = element.name
+      return item
+    })
+
+    legend.replaceChildren(...items)
+  }
+
+  function targetRotation(elementId: string): number {
+    const segments = [...disc.querySelectorAll<SVGGElement>('[data-element-id]')]
+    const index = segments.findIndex((segment) => segment.dataset.elementId === elementId)
+    const step = segments.length > 0 ? 360 / segments.length : 360
+    const current = ((rotation % 360) + 360) % 360
+    const target = index === -1 ? current : ((-(index + 0.5) * step) % 360 + 360) % 360
+    const delta = ((target - current) % 360 + 360) % 360
+
+    return rotation + delta + 360 * FULL_TURNS
+  }
+
+  function placeAt(elementId: string): void {
+    rotation = targetRotation(elementId)
+    disc.style.transform = `rotate(${rotation}deg)`
+  }
+
+  // La animación arranca con el resultado ya guardado y resuelve al terminar la transición.
+  function animate(elementId: string): Promise<void> {
+    if (meta.matches) {
+      placeAt(elementId)
+      return Promise.resolve()
+    }
+
+    return new Promise((resolve) => {
+      let settled = false
+      const finish = (): void => {
+        if (settled) return
+        settled = true
+        window.clearTimeout(fallback)
+        resolve()
+      }
+      const fallback = window.setTimeout(finish, SPIN_DURATION + 600)
+
+      disc.addEventListener('transitionend', finish, { once: true })
+      placeAt(elementId)
+    })
+  }
+
+  function showResult(payload: SpinResponse): void {
+    result.textContent = payload.variant
+      ? `${payload.element.name} · ${payload.variant.name}`
+      : payload.element.name
+  }
+
+  async function spin(): Promise<void> {
+    if (spinning) return
+
+    spinning = true
+    button.disabled = true
+    result.textContent = ''
+    status.textContent = 'Girando…'
+
+    let payload: SpinResponse
+
+    try {
+      const response = await fetch(`/api/categories/${categoryId}/spin`, { method: 'POST' })
+
+      if (!response.ok) {
+        status.textContent =
+          response.status === 409
+            ? 'Añade al menos 2 elementos para poder girar'
+            : 'No se pudo girar, inténtalo de nuevo'
+        spinning = false
+        setEnabled()
+        return
+      }
+
+      payload = await response.json()
+    } catch {
+      status.textContent = 'No se pudo girar, inténtalo de nuevo'
+      spinning = false
+      setEnabled()
+      return
+    }
+
+    await animate(payload.element.id)
+
+    status.textContent = ''
+    showResult(payload)
+    spinning = false
+    setEnabled()
+  }
+
+  button.addEventListener('click', () => {
+    void spin()
+  })
+
+  window.addEventListener('elements-changed', (event) => {
+    const detail = (event as CustomEvent<{ elements?: { id: string; name: string }[] }>).detail
+    const elements = detail?.elements ?? []
+
+    elementCount = elements.length
+    renderWheel(elements)
+    renderLegend(elements)
+    setEnabled()
+  })
+</script>

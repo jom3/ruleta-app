@@ -1,6 +1,7 @@
 ---
 import { actions } from 'astro:actions'
 import AppLayout from '../../../layouts/AppLayout.astro'
+import SpinPanel from '../../../components/SpinPanel.astro'
 import { listWithVariants } from '../../../db/elements'
 import { requireOwnedCategory } from '../../../lib/ownership'
 
@@ -12,7 +13,6 @@ if (!category) {
 }
 
 const elements = category ? await listWithVariants(category.id) : []
-const hasEnoughElements = elements.length >= 2
 ---
 
 <AppLayout title={category ? category.name : 'Categoría no encontrada'} user={user}>
@@ -25,14 +25,10 @@ const hasEnoughElements = elements.length >= 2
           </p>
           <h1>{category.name}</h1>
 
-          <section class="spin-area">
-            <button type="button" id="spin" disabled>
-              Girar
-            </button>
-            <p class="spin-warning" id="spin-warning" hidden={hasEnoughElements}>
-              Añade al menos 2 elementos para poder girar
-            </p>
-          </section>
+          <SpinPanel
+            categoryId={category.id}
+            elements={elements.map((element) => ({ id: element.id, name: element.name }))}
+          />
 
           <form id="element-form" class="element-form" method="POST" action={actions.createElement}>
             <input type="hidden" name="categoryId" value={category.id} />
@@ -156,16 +152,6 @@ const hasEnoughElements = elements.length >= 2
   .back-link {
     margin-top: 0;
     margin-bottom: var(--space-2);
-  }
-
-  .spin-area {
-    margin-bottom: var(--space-6);
-  }
-
-  .spin-warning {
-    margin: var(--space-2) 0 0;
-    color: var(--color-muted);
-    font-size: 0.875rem;
   }
 
   .row {
@@ -301,7 +287,6 @@ const hasEnoughElements = elements.length >= 2
   const elementInput = document.querySelector<HTMLInputElement>('#element-name')
   const elementSubmit = document.querySelector<HTMLButtonElement>('#element-submit')
   const errorBox = document.querySelector<HTMLParagraphElement>('#element-error')
-  const warning = document.querySelector<HTMLParagraphElement>('#spin-warning')
   const elementTemplate = document.querySelector<HTMLTemplateElement>('#element-template')
   const variantTemplate = document.querySelector<HTMLTemplateElement>('#variant-template')
   const dialog = document.querySelector<HTMLDialogElement>('#delete-dialog')
@@ -317,7 +302,6 @@ const hasEnoughElements = elements.length >= 2
     !elementInput ||
     !elementSubmit ||
     !errorBox ||
-    !warning ||
     !elementTemplate ||
     !variantTemplate ||
     !dialog ||
@@ -335,10 +319,15 @@ const hasEnoughElements = elements.length >= 2
   let pendingDelete: { kind: 'element' | 'variant'; id: string; item: HTMLLIElement } | null = null
 
   function syncState(): void {
-    const count = list.children.length
+    const elements = [...list.querySelectorAll<HTMLLIElement>('.element')].map((item) => ({
+      id: item.dataset.id!,
+      name: item.querySelector('.element__name')?.textContent ?? '',
+    }))
+    const count = elements.length
+
     emptyState.hidden = count > 0
     list.hidden = count === 0
-    warning.hidden = count >= 2
+    window.dispatchEvent(new CustomEvent('elements-changed', { detail: { elements } }))
   }
 
   function buildVariant(elementId: string, variant: { id: string; name: string }): HTMLLIElement {
