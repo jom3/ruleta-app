@@ -1,6 +1,6 @@
 # SPEC 05 — Elements and variants
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Depends on:** SPEC 04
 > **Date:** 2026-11-11
 > **Objective:** Que el usuario cree y borre elementos dentro de una categoría y variantes opcionales dentro de un elemento, con nombres únicos y sin edición.
@@ -66,16 +66,16 @@ Reutiliza `normalizeName`/`displayName` de `src/lib/names.ts`, con el mismo lím
 
 ## Acceptance criteria
 
-- [ ] Se crea un elemento con nombre válido y aparece en su categoría.
-- [ ] Crear "React" teniendo "react" en la misma categoría muestra un error.
-- [ ] "React" puede existir en dos categorías distintas del mismo usuario.
-- [ ] Un elemento puede tener 0, 1 o varias variantes.
-- [ ] Crear una variante repetida (sin distinguir mayúsculas) en el mismo elemento muestra un error.
-- [ ] Borrar un elemento con variantes pide confirmación y, al confirmar, desaparecen el elemento y sus variantes.
-- [ ] Borrar una variante deja intacto el elemento y sus demás variantes.
-- [ ] Con menos de 2 elementos en la categoría se ve el aviso y el botón de girar está deshabilitado.
-- [ ] Abrir `/app/categories/<id de otro usuario>` responde 404.
-- [ ] La lista de elementos con variantes se usa sin scroll horizontal en 360 px de ancho.
+- [x] Se crea un elemento con nombre válido y aparece en su categoría.
+- [x] Crear "React" teniendo "react" en la misma categoría muestra un error.
+- [x] "React" puede existir en dos categorías distintas del mismo usuario.
+- [x] Un elemento puede tener 0, 1 o varias variantes.
+- [x] Crear una variante repetida (sin distinguir mayúsculas) en el mismo elemento muestra un error.
+- [x] Borrar un elemento con variantes pide confirmación y, al confirmar, desaparecen el elemento y sus variantes.
+- [x] Borrar una variante deja intacto el elemento y sus demás variantes.
+- [x] Con menos de 2 elementos en la categoría se ve el aviso y el botón de girar está deshabilitado.
+- [x] Abrir `/app/categories/<id de otro usuario>` responde 404.
+- [x] La lista de elementos con variantes se usa sin scroll horizontal en 360 px de ancho.
 
 ## Decisions
 
@@ -85,6 +85,9 @@ Reutiliza `normalizeName`/`displayName` de `src/lib/names.ts`, con el mismo lím
 - **Yes:** Aviso de mínimo 2 elementos desde este spec, aunque el giro llegue en SPEC 06. El usuario entiende el requisito al construir la categoría.
 - **No:** Editar nombre. La idea lo excluye explícitamente.
 - **No:** Limitar el número de elementos o variantes. El MVP no lo necesita y añade reglas sin uso.
+- **Yes:** `requireOwnedCategory`/`requireOwnedElement` devuelven `null` en lugar de lanzar un error de Astro: un error lanzado durante el render termina en 500, así que la página decide el 404.
+- **Yes:** `listByElement` no se implementó; `listWithVariants` trae elementos y variantes en dos consultas y la página no necesita otra vista.
+- **Yes:** El botón `Girar` sigue deshabilitado en esta spec; el aviso de menos de 2 elementos ya funciona y el giro se habilita en SPEC 06 y 07.
 
 ## Risks
 
