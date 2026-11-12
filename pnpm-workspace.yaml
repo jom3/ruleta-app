@@ -1,0 +1,11 @@
+# Sin symlinks en node_modules: el adaptador de Vercel los reproduce al empaquetar
+# la función y Windows sin Developer Mode no permite crearlos.
+nodeLinker: hoisted
+
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - '@astrojs/markdown-satteri@0.4.9'
+  - '@astrojs/runtime@0.1.1'
+  - '@astrojs/vite-plugin-astro@0.1.2'
+  - astro@7.4.11
