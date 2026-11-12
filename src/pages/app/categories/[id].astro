@@ -1,23 +1,146 @@
 ---
+import { actions } from 'astro:actions'
 import AppLayout from '../../../layouts/AppLayout.astro'
-import { findById } from '../../../db/categories'
+import { listWithVariants } from '../../../db/elements'
+import { requireOwnedCategory } from '../../../lib/ownership'
 
 const user = Astro.locals.user!
-const category = await findById(user.id, Astro.params.id ?? '')
+const category = await requireOwnedCategory(user.id, Astro.params.id ?? '')
 
 if (!category) {
   Astro.response.status = 404
 }
+
+const elements = category ? await listWithVariants(category.id) : []
+const hasEnoughElements = elements.length >= 2
 ---
 
 <AppLayout title={category ? category.name : 'Categoría no encontrada'} user={user}>
-  <main>
+  <main data-category-id={category?.id}>
     {
       category ? (
         <>
-          <p class="form-alt back-link"><a href="/app">Mis categorías</a></p>
+          <p class="form-alt back-link">
+            <a href="/app">Mis categorías</a>
+          </p>
           <h1>{category.name}</h1>
-          <p class="notice">Esta categoría todavía no tiene elementos.</p>
+
+          <section class="spin-area">
+            <button type="button" id="spin" disabled>
+              Girar
+            </button>
+            <p class="spin-warning" id="spin-warning" hidden={hasEnoughElements}>
+              Añade al menos 2 elementos para poder girar
+            </p>
+          </section>
+
+          <form id="element-form" class="element-form" method="POST" action={actions.createElement}>
+            <input type="hidden" name="categoryId" value={category.id} />
+            <label for="element-name">Nuevo elemento</label>
+            <div class="row">
+              <input
+                id="element-name"
+                name="name"
+                type="text"
+                maxlength="40"
+                autocomplete="off"
+                required
+              />
+              <button type="submit" id="element-submit">Añadir</button>
+            </div>
+            <p class="form-error" id="element-error" role="alert"></p>
+          </form>
+
+          <p class="empty-state" id="elements-empty" hidden={elements.length > 0}>
+            Añade tu primer elemento.
+          </p>
+
+          <ul class="element-list" id="element-list" hidden={elements.length === 0}>
+            {
+              elements.map((element) => (
+                <li class="element" data-id={element.id} data-key={element.name.toLowerCase()}>
+                  <div class="element__head">
+                    <h2 class="element__name">{element.name}</h2>
+                    <button type="button" class="secondary small" data-delete-element>
+                      Borrar
+                    </button>
+                  </div>
+
+                  <ul class="variant-list">
+                    {element.variants.map((variant) => (
+                      <li class="variant" data-id={variant.id} data-element-id={element.id}>
+                        <span class="variant__name">{variant.name}</span>
+                        <button type="button" class="secondary small" data-delete-variant>
+                          Borrar
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p class="variant-empty" hidden={element.variants.length > 0}>
+                    Sin variantes
+                  </p>
+
+                  <p class="form-error variant-error" role="alert"></p>
+
+                  <form class="variant-form" method="POST" action={actions.createVariant}>
+                    <input type="hidden" name="elementId" value={element.id} />
+                    <input
+                      name="name"
+                      type="text"
+                      maxlength="40"
+                      autocomplete="off"
+                      placeholder="Nueva variante"
+                      aria-label={`Nueva variante de ${element.name}`}
+                      required
+                    />
+                    <button type="submit" class="secondary small">
+                      Añadir variante
+                    </button>
+                  </form>
+                </li>
+              ))
+            }
+          </ul>
+
+          <template id="element-template">
+            <li class="element">
+              <div class="element__head">
+                <h2 class="element__name"></h2>
+                <button type="button" class="secondary small" data-delete-element>Borrar</button>
+              </div>
+              <ul class="variant-list"></ul>
+              <p class="variant-empty">Sin variantes</p>
+              <p class="form-error variant-error" role="alert"></p>
+              <form class="variant-form" method="POST">
+                <input
+                  name="name"
+                  type="text"
+                  maxlength="40"
+                  autocomplete="off"
+                  placeholder="Nueva variante"
+                  aria-label="Nueva variante"
+                  required
+                />
+                <button type="submit" class="secondary small">Añadir variante</button>
+              </form>
+            </li>
+          </template>
+
+          <template id="variant-template">
+            <li class="variant">
+              <span class="variant__name"></span>
+              <button type="button" class="secondary small" data-delete-variant>Borrar</button>
+            </li>
+          </template>
+
+          <dialog id="delete-dialog" class="confirm-dialog">
+            <p id="delete-text"></p>
+            <div class="confirm-dialog__actions">
+              <button type="button" class="secondary" id="delete-cancel">Cancelar</button>
+              <button type="button" id="delete-confirm">Borrar</button>
+            </div>
+          </dialog>
         </>
       ) : (
         <>
@@ -35,10 +158,344 @@ if (!category) {
     margin-bottom: var(--space-2);
   }
 
-  .notice {
-    padding: var(--space-4);
+  .spin-area {
+    margin-bottom: var(--space-6);
+  }
+
+  .spin-warning {
+    margin: var(--space-2) 0 0;
+    color: var(--color-muted);
+    font-size: 0.875rem;
+  }
+
+  .row {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .row input {
+    margin-bottom: 0;
+    min-width: 0;
+  }
+
+  .row button {
+    width: auto;
+    flex-shrink: 0;
+  }
+
+  .empty-state {
+    padding: var(--space-6);
     border: 1px dashed var(--color-border);
     border-radius: var(--radius);
     color: var(--color-muted);
+    text-align: center;
+  }
+
+  .element-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .element {
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+  }
+
+  .element__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .element__name {
+    margin: 0;
+    font-size: 1.125rem;
+    overflow-wrap: anywhere;
+  }
+
+  .small {
+    width: auto;
+    padding: var(--space-1) var(--space-3);
+    font-size: 0.875rem;
+    flex-shrink: 0;
+  }
+
+  .variant-list {
+    list-style: none;
+    margin: var(--space-3) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .variant {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    background: var(--color-bg);
+  }
+
+  .variant__name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .variant-empty {
+    margin: var(--space-3) 0 0;
+    color: var(--color-muted);
+    font-size: 0.875rem;
+  }
+
+  .variant-form {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+
+  .variant-form input {
+    margin-bottom: 0;
+    min-width: 0;
+  }
+
+  .confirm-dialog {
+    max-width: min(90vw, 24rem);
+    padding: var(--space-6);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  .confirm-dialog::backdrop {
+    background: rgb(0 0 0 / 0.6);
+  }
+
+  .confirm-dialog__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+
+  .confirm-dialog__actions button {
+    width: auto;
   }
 </style>
+
+<script>
+  import { actions } from 'astro:actions'
+
+  const main = document.querySelector<HTMLElement>('main')
+  const list = document.querySelector<HTMLUListElement>('#element-list')
+  const emptyState = document.querySelector<HTMLParagraphElement>('#elements-empty')
+  const elementForm = document.querySelector<HTMLFormElement>('#element-form')
+  const elementInput = document.querySelector<HTMLInputElement>('#element-name')
+  const elementSubmit = document.querySelector<HTMLButtonElement>('#element-submit')
+  const errorBox = document.querySelector<HTMLParagraphElement>('#element-error')
+  const warning = document.querySelector<HTMLParagraphElement>('#spin-warning')
+  const elementTemplate = document.querySelector<HTMLTemplateElement>('#element-template')
+  const variantTemplate = document.querySelector<HTMLTemplateElement>('#variant-template')
+  const dialog = document.querySelector<HTMLDialogElement>('#delete-dialog')
+  const deleteText = document.querySelector<HTMLParagraphElement>('#delete-text')
+  const deleteConfirm = document.querySelector<HTMLButtonElement>('#delete-confirm')
+  const deleteCancel = document.querySelector<HTMLButtonElement>('#delete-cancel')
+
+  if (
+    !main?.dataset.categoryId ||
+    !list ||
+    !emptyState ||
+    !elementForm ||
+    !elementInput ||
+    !elementSubmit ||
+    !errorBox ||
+    !warning ||
+    !elementTemplate ||
+    !variantTemplate ||
+    !dialog ||
+    !deleteText ||
+    !deleteConfirm ||
+    !deleteCancel
+  ) {
+    throw new Error('Faltan nodos del DOM para gestionar elementos')
+  }
+
+  const categoryId = main.dataset.categoryId
+  const variantListOf = (elementItem: HTMLLIElement): HTMLUListElement =>
+    elementItem.querySelector<HTMLUListElement>('.variant-list')!
+
+  let pendingDelete: { kind: 'element' | 'variant'; id: string; item: HTMLLIElement } | null = null
+
+  function syncState(): void {
+    const count = list.children.length
+    emptyState.hidden = count > 0
+    list.hidden = count === 0
+    warning.hidden = count >= 2
+  }
+
+  function buildVariant(elementId: string, variant: { id: string; name: string }): HTMLLIElement {
+    const item = variantTemplate.content.firstElementChild!.cloneNode(true) as HTMLLIElement
+    item.dataset.id = variant.id
+    item.dataset.elementId = elementId
+    item.querySelector('.variant__name')!.textContent = variant.name
+    return item
+  }
+
+  function buildElement(element: {
+    id: string
+    name: string
+    variants: { id: string; name: string }[]
+  }): HTMLLIElement {
+    const item = elementTemplate.content.firstElementChild!.cloneNode(true) as HTMLLIElement
+    item.dataset.id = element.id
+    item.dataset.key = element.name.toLowerCase()
+    item.querySelector('.element__name')!.textContent = element.name
+
+    for (const variant of element.variants) {
+      variantListOf(item).append(buildVariant(element.id, variant))
+    }
+
+    item.querySelector<HTMLElement>('.variant-empty')!.hidden = element.variants.length > 0
+    return item
+  }
+
+  function insertElement(element: {
+    id: string
+    name: string
+    variants: { id: string; name: string }[]
+  }): void {
+    const item = buildElement(element)
+    const next = [...list.children].find(
+      (child) => ((child as HTMLLIElement).dataset.key ?? '') > item.dataset.key!,
+    )
+
+    list.insertBefore(item, next ?? null)
+  }
+
+  elementForm.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    errorBox.textContent = ''
+    elementSubmit.disabled = true
+
+    const { data, error } = await actions.createElement({
+      categoryId,
+      name: elementInput.value,
+    })
+
+    elementSubmit.disabled = false
+
+    if (error) {
+      errorBox.textContent = error.message
+      return
+    }
+
+    insertElement(data)
+    elementForm.reset()
+    syncState()
+    elementInput.focus()
+  })
+
+  list.addEventListener('submit', async (event) => {
+    const form = (event.target as HTMLElement).closest<HTMLFormElement>('.variant-form')
+    const elementItem = form?.closest<HTMLLIElement>('.element')
+    if (!form || !elementItem?.dataset.id) return
+
+    event.preventDefault()
+
+    const input = form.querySelector<HTMLInputElement>('input[name="name"]')!
+    const button = form.querySelector<HTMLButtonElement>('button')!
+    const feedback = elementItem.querySelector<HTMLParagraphElement>('.variant-error')!
+
+    button.disabled = true
+    const { data, error } = await actions.createVariant({
+      elementId: elementItem.dataset.id,
+      name: input.value,
+    })
+    button.disabled = false
+
+    if (error) {
+      feedback.textContent = error.message
+      return
+    }
+
+    feedback.textContent = ''
+    variantListOf(elementItem).append(buildVariant(elementItem.dataset.id, data))
+    elementItem.querySelector<HTMLElement>('.variant-empty')!.hidden = true
+    form.reset()
+    input.focus()
+  })
+
+  list.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement
+    const elementButton = target.closest<HTMLButtonElement>('[data-delete-element]')
+    const variantButton = target.closest<HTMLButtonElement>('[data-delete-variant]')
+
+    if (elementButton) {
+      const item = elementButton.closest<HTMLLIElement>('.element')
+      if (!item?.dataset.id) return
+
+      pendingDelete = { kind: 'element', id: item.dataset.id, item }
+      const name = item.querySelector('.element__name')?.textContent ?? ''
+      deleteText.textContent = `¿Borrar ${name}? También se eliminarán sus variantes.`
+      dialog.showModal()
+      return
+    }
+
+    if (variantButton) {
+      const item = variantButton.closest<HTMLLIElement>('.variant')
+      if (!item?.dataset.id) return
+
+      pendingDelete = { kind: 'variant', id: item.dataset.id, item }
+      const name = item.querySelector('.variant__name')?.textContent ?? ''
+      deleteText.textContent = `¿Borrar la variante ${name}?`
+      dialog.showModal()
+    }
+  })
+
+  deleteCancel.addEventListener('click', () => {
+    pendingDelete = null
+    dialog.close()
+  })
+
+  deleteConfirm.addEventListener('click', async () => {
+    if (!pendingDelete) return
+
+    const { kind, id, item } = pendingDelete
+    deleteConfirm.disabled = true
+
+    const { error } =
+      kind === 'element'
+        ? await actions.deleteElement({ categoryId, elementId: id })
+        : await actions.deleteVariant({ elementId: item.dataset.elementId!, variantId: id })
+
+    deleteConfirm.disabled = false
+
+    if (error) {
+      dialog.close()
+      pendingDelete = null
+      errorBox.textContent = error.message
+      return
+    }
+
+    if (kind === 'element') {
+      item.remove()
+      syncState()
+    } else {
+      const variantList = item.parentElement!
+      const elementItem = variantList.closest<HTMLLIElement>('.element')!
+      item.remove()
+      elementItem.querySelector<HTMLElement>('.variant-empty')!.hidden = variantList.children.length > 0
+    }
+
+    pendingDelete = null
+    dialog.close()
+  })
+</script>

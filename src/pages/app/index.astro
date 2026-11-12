@@ -6,6 +6,9 @@ import { listByUser } from '../../db/categories'
 const user = Astro.locals.user!
 const categories = await listByUser(user.id)
 
+const formatElementCount = (count: number): string =>
+  count === 1 ? '1 elemento' : `${count} elementos`
+
 const createResult = Astro.getActionResult(actions.createCategory)
 const createError = createResult?.error?.message ?? ''
 ---
@@ -39,6 +42,7 @@ const createError = createResult?.error?.message ?? ''
         categories.map((category) => (
           <li class="category" data-id={category.id} data-key={category.name.toLowerCase()}>
             <a class="category__name" href={`/app/categories/${category.id}`}>{category.name}</a>
+            <span class="category__count">{formatElementCount(category.elementCount)}</span>
             <button type="button" class="secondary category__delete" data-delete={category.id}>
               Borrar
             </button>
@@ -50,6 +54,7 @@ const createError = createResult?.error?.message ?? ''
     <template id="category-template">
       <li class="category">
         <a class="category__name"></a>
+        <span class="category__count"></span>
         <button type="button" class="secondary category__delete">Borrar</button>
       </li>
     </template>
@@ -109,6 +114,7 @@ const createError = createResult?.error?.message ?? ''
 
   .category__name {
     min-width: 0;
+    flex: 1;
     overflow-wrap: anywhere;
     color: var(--color-text);
     text-decoration: none;
@@ -116,6 +122,13 @@ const createError = createResult?.error?.message ?? ''
 
   .category__name:hover {
     color: var(--color-accent);
+  }
+
+  .category__count {
+    flex-shrink: 0;
+    color: var(--color-muted);
+    font-size: 0.75rem;
+    white-space: nowrap;
   }
 
   .category__delete {
@@ -182,6 +195,7 @@ const createError = createResult?.error?.message ?? ''
     link.href = `/app/categories/${category.id}`
     link.textContent = category.name
 
+    item.querySelector('.category__count')!.textContent = '0 elementos'
     item.querySelector<HTMLButtonElement>('.category__delete')!.dataset.delete = category.id
     return item
   }

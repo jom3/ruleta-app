@@ -15,6 +15,13 @@
       "when": 1794458622802,
       "tag": "0001_chilly_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794459081963,
+      "tag": "0002_shiny_tombstone",
+      "breakpoints": true
     }
   ]
 }
