@@ -1,14 +1,8 @@
 import { ActionError, defineAction } from 'astro:actions'
 import { z } from 'astro/zod'
-import { create, DuplicateNameError, remove } from '../db/categories'
+import { create, remove } from '../db/categories'
 import { displayName, nameError } from '../lib/names'
-import { getCurrentUser } from '../lib/session'
-
-async function requireUserId(request: Request): Promise<string> {
-  const user = await getCurrentUser({ request })
-  if (!user) throw new ActionError({ code: 'UNAUTHORIZED', message: 'Inicia sesión para continuar.' })
-  return user.id
-}
+import { requireUserId, throwIfDuplicate } from './guards'
 
 export const createCategory = defineAction({
   input: z.object({ name: z.string() }),
@@ -21,10 +15,7 @@ export const createCategory = defineAction({
     try {
       return await create(userId, displayName(name))
     } catch (cause) {
-      if (cause instanceof DuplicateNameError) {
-        throw new ActionError({ code: 'CONFLICT', message: 'Ya tienes una categoría con ese nombre.' })
-      }
-      throw cause
+      return throwIfDuplicate(cause, 'Ya tienes una categoría con ese nombre.')
     }
   },
 })

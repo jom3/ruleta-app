@@ -1,7 +1,11 @@
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, sql } from 'drizzle-orm'
 import { db } from './client'
+import { DuplicateNameError, isUniqueViolation, isUuid } from './errors'
 import { categories } from './schema/categories'
+import { elements } from './schema/elements'
 import { displayName, normalizeName } from '../lib/names'
+
+export { DuplicateNameError }
 
 export type Category = {
   id: string
@@ -9,11 +13,8 @@ export type Category = {
   createdAt: Date
 }
 
-export class DuplicateNameError extends Error {
-  constructor() {
-    super('Duplicate category name')
-    this.name = 'DuplicateNameError'
-  }
+export type CategoryListItem = Category & {
+  elementCount: number
 }
 
 const columns = {
@@ -22,18 +23,21 @@ const columns = {
   createdAt: categories.createdAt,
 }
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-export async function listByUser(userId: string): Promise<Category[]> {
+export async function listByUser(userId: string): Promise<CategoryListItem[]> {
   return db
-    .select(columns)
+    .select({
+      ...columns,
+      elementCount: sql<number>`count(${elements.id})::int`,
+    })
     .from(categories)
+    .leftJoin(elements, eq(elements.categoryId, categories.id))
     .where(eq(categories.userId, userId))
+    .groupBy(categories.id)
     .orderBy(asc(categories.nameKey))
 }
 
 export async function findById(userId: string, categoryId: string): Promise<Category | null> {
-  if (!UUID_PATTERN.test(categoryId)) return null
+  if (!isUuid(categoryId)) return null
 
   const [category] = await db
     .select(columns)
@@ -59,7 +63,7 @@ export async function create(userId: string, name: string): Promise<Category> {
 }
 
 export async function remove(userId: string, categoryId: string): Promise<boolean> {
-  if (!UUID_PATTERN.test(categoryId)) return false
+  if (!isUuid(categoryId)) return false
 
   const removed = await db
     .delete(categories)
@@ -67,12 +71,4 @@ export async function remove(userId: string, categoryId: string): Promise<boolea
     .returning({ id: categories.id })
 
   return removed.length > 0
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false
-
-  if ('code' in error && error.code === '23505') return true
-
-  return 'cause' in error && isUniqueViolation(error.cause)
 }
