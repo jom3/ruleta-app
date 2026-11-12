@@ -71,26 +71,31 @@ describe.skipIf(!hasDatabase)('spins repository', () => {
     await elements.create(category.id, 'Beta')
 
     const result = await spins.resolveSpin(category.id, () => 0)
+    if (result === 'not-enough-elements') throw new Error('esperaba un giro')
 
-    expect(result).toEqual({ elementId: alpha.id, variantId: null })
+    expect(result.spinId).toEqual(expect.any(String))
+    expect(result.element).toEqual({ id: alpha.id, name: 'Alpha' })
+    expect(result.variant).toBeNull()
 
     const rows = await db
-      .select({ elementId: schema.spins.elementId, variantId: schema.spins.variantId })
+      .select({ id: schema.spins.id, elementId: schema.spins.elementId, variantId: schema.spins.variantId })
       .from(schema.spins)
       .where(eq(schema.spins.categoryId, category.id))
 
-    expect(rows).toEqual([{ elementId: alpha.id, variantId: null }])
+    expect(rows).toEqual([{ id: result.spinId, elementId: alpha.id, variantId: null }])
   })
 
-  it('returns a variant id when the drawn element has variants', async () => {
+  it('returns a variant when the drawn element has variants', async () => {
     const category = await makeCategory()
     await elements.create(category.id, 'Alpha')
     const beta = await elements.create(category.id, 'Beta')
     const variant = await variants.create(beta.id, '18')
 
     const result = await spins.resolveSpin(category.id, () => 0.9)
+    if (result === 'not-enough-elements') throw new Error('esperaba un giro')
 
-    expect(result).toEqual({ elementId: beta.id, variantId: variant.id })
+    expect(result.element).toEqual({ id: beta.id, name: 'Beta' })
+    expect(result.variant).toEqual({ id: variant.id, name: '18' })
   })
 
   it('returns the last two spins of the category, newest first', async () => {
@@ -148,7 +153,7 @@ describe.skipIf(!hasDatabase)('spins repository', () => {
     expect(second).not.toBe('not-enough-elements')
 
     if (first === 'not-enough-elements' || second === 'not-enough-elements') return
-    expect(second.elementId).not.toBe(first.elementId)
+    expect(second.element.id).not.toBe(first.element.id)
 
     const ids = (await db
       .select({ id: schema.elements.id })
