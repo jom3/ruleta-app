@@ -10,6 +10,7 @@ if (Astro.locals.user) {
   <main>
     <h1>Iniciar sesión</h1>
     <form id="login-form" novalidate>
+      <p class="form-success" id="login-success" role="status"></p>
       <p class="form-error" id="login-error" role="alert"></p>
 
       <label for="email">Correo</label>
@@ -44,8 +45,13 @@ if (Astro.locals.user) {
   const authClient = createAuthClient()
   const form = document.querySelector<HTMLFormElement>('#login-form')!
   const errorBox = document.querySelector<HTMLParagraphElement>('#login-error')!
+  const successBox = document.querySelector<HTMLParagraphElement>('#login-success')!
   const submitButton = document.querySelector<HTMLButtonElement>('#login-submit')!
   const googleButton = document.querySelector<HTMLButtonElement>('#google-login')!
+
+  if (new URLSearchParams(window.location.search).get('reset') === 'ok') {
+    successBox.textContent = 'Contraseña actualizada. Inicia sesión con la nueva.'
+  }
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault()

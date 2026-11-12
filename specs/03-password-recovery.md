@@ -1,6 +1,6 @@
 # SPEC 03 — Password recovery by email
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Depends on:** SPEC 02
 > **Date:** 2026-11-11
 > **Objective:** Permitir que un usuario con contraseña reciba un enlace por correo y establezca una nueva contraseña de 8 o más caracteres.
@@ -53,18 +53,18 @@ export async function requestReset(email: string): Promise<ResetRequestResult>
 
 ## Acceptance criteria
 
-- [ ] Solicitar recuperación con una cuenta de correo/contraseña envía un correo con un enlace que abre `/reset-password`.
-- [ ] El enlace permite fijar una contraseña de 8 caracteres y después iniciar sesión con ella.
-- [ ] Una contraseña nueva de menos de 8 caracteres se rechaza con mensaje y no cambia nada.
-- [ ] Renombrar (`requestReset`) con un correo sin cuenta muestra el mismo mensaje genérico que con una cuenta existente.
-- [ ] Una cuenta creada solo con Google no recibe un enlace utilizable; la pantalla sigue mostrando el mensaje genérico.
-- [ ] Un token inválido o expirado no cambia la contraseña y muestra el mensaje de enlace no válido.
-- [ ] Tras restablecer, el enlace no puede reutilizarse.
+- [x] Solicitar recuperación con una cuenta de correo/contraseña envía un correo con un enlace que abre `/reset-password`.
+- [x] El enlace permite fijar una contraseña de 8 caracteres y después iniciar sesión con ella.
+- [x] Una contraseña nueva de menos de 8 caracteres se rechaza con mensaje y no cambia nada.
+- [x] Solicitar (`requestReset`) con un correo sin cuenta muestra el mismo mensaje genérico que con una cuenta existente.
+- [x] Una cuenta creada solo con Google no recibe un enlace utilizable; la pantalla sigue mostrando el mensaje genérico.
+- [x] Un token inválido o expirado no cambia la contraseña y muestra el mensaje de enlace no válido.
+- [x] Tras restablecer, el enlace no puede reutilizarse.
 
 ## Decisions
 
 - **Yes:** Mensaje genérico siempre. Evita enumerar correos registrados, coherente con el mensaje genérico de credenciales.
-- **Yes:** A una cuenta solo Google se le envía un correo que dice "esta cuenta entra con Google" en lugar de mostrar ese aviso en pantalla. Cumple la decisión de bloquear el reset y no revela a un tercero qué correos tienen cuenta. *(Ajuste a confirmar por el usuario; alternativa registrada: mostrar el aviso en pantalla y aceptar la enumeración.)*
+- **Yes:** A una cuenta solo Google se le envía un correo que dice "esta cuenta entra con Google" en lugar de mostrar ese aviso en pantalla. Cumple la decisión de bloquear el reset y no revela a un tercero qué correos tienen cuenta.
 - **Yes:** Resend con texto plano. Un correo con un enlace no necesita HTML.
 - **Yes:** La expiración del token la fija Better Auth (1 hora por defecto). No se implementa otro mecanismo.
 - **No:** Enviar el token en el cuerpo de la respuesta HTTP. Solo viaja por correo.
@@ -76,7 +76,7 @@ export async function requestReset(email: string): Promise<ResetRequestResult>
 | ---- | ---------- |
 | Resend exige un dominio verificado para enviar a terceros | Verificar el dominio en Resend antes de publicar; en dev, usar la dirección de pruebas `onboarding@resend.dev` con el correo del autor. |
 | Correos que caen en spam | Remitente con dominio verificado y asunto plano; documentar en el README que el enlace puede tardar. |
-| Fuerza bruta sobre `/forgot-password` | Activar el rate limit de Better Auth en esa ruta y limitar a 3 intentos por IP y minuto. |
+| Fuerza bruta sobre `/forgot-password` | `createRateLimiter` limita a 3 solicitudes por IP y minuto en `/api/password/forgot`. El contador vive en memoria del proceso, así que es una barrera parcial en Vercel; sirve para el MVP. |
 
 ## What is not in this spec
 

@@ -21,7 +21,8 @@
     "@neondatabase/serverless": "^1.2.0",
     "astro": "^7.4.11",
     "better-auth": "^1.7.20",
-    "drizzle-orm": "^0.45.4"
+    "drizzle-orm": "^0.45.4",
+    "resend": "^6.38.0"
   },
   "devDependencies": {
     "dotenv": "^18.0.10",
