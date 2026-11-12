@@ -1,6 +1,6 @@
 # SPEC 06 — Spin engine: penalty weights, draw and history
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Depends on:** SPEC 05
 > **Date:** 2026-11-11
 > **Objective:** Implementar en lógica pura y testeable el sorteo con penalización de los 2 últimos giros y persistir cada giro en el historial de su categoría.
@@ -83,17 +83,17 @@ export async function resolveSpin(categoryId: string): Promise<SpinResult | 'not
 
 ## Acceptance criteria
 
-- [ ] `computeProbabilities` con 10 elementos y 2 giros de elementos distintos produce 1/86, 5/86 y 10/86 (≈1,16 %, ≈5,81 %, ≈11,63 %).
-- [ ] Con el mismo elemento en los 2 últimos giros, su factor es 1/10 y no se multiplica por 1/2.
-- [ ] Con 1 solo giro en el historial se aplica únicamente 1/10 al último elemento.
-- [ ] Todas las probabilidades devueltas son mayores que 0 y suman 1 (tolerancia 1e-9).
-- [ ] `getRecentElementIds` devuelve como máximo 2 ids y nunca uno de otra categoría.
-- [ ] `resolveSpin` con 0 o 1 elementos devuelve `'not-enough-elements'` y no inserta filas.
-- [ ] `resolveSpin` inserta un giro cuyo `elementId` coincide con el sorteo devuelto.
-- [ ] Un elemento con variantes devuelve un `variantId`; sin variantes devuelve `null`.
-- [ ] Los giros de una categoría no cambian las probabilidades de otra categoría.
-- [ ] Borrar un elemento elimina sus giros y el resto del historial sigue disponible.
-- [ ] `pnpm test` cubre todos los casos anteriores y termina en verde.
+- [x] `computeProbabilities` con 10 elementos y 2 giros de elementos distintos produce 1/86, 5/86 y 10/86 (≈1,16 %, ≈5,81 %, ≈11,63 %).
+- [x] Con el mismo elemento en los 2 últimos giros, su factor es 1/10 y no se multiplica por 1/2.
+- [x] Con 1 solo giro en el historial se aplica únicamente 1/10 al último elemento.
+- [x] Todas las probabilidades devueltas son mayores que 0 y suman 1 (tolerancia 1e-9).
+- [x] `getRecentElementIds` devuelve como máximo 2 ids y nunca uno de otra categoría.
+- [x] `resolveSpin` con 0 o 1 elementos devuelve `'not-enough-elements'` y no inserta filas.
+- [x] `resolveSpin` inserta un giro cuyo `elementId` coincide con el sorteo devuelto.
+- [x] Un elemento con variantes devuelve un `variantId`; sin variantes devuelve `null`.
+- [x] Los giros de una categoría no cambian las probabilidades de otra categoría.
+- [x] Borrar un elemento elimina sus giros y el resto del historial sigue disponible.
+- [x] `pnpm test` cubre todos los casos anteriores y termina en verde.
 
 ## Decisions
 
@@ -105,12 +105,14 @@ export async function resolveSpin(categoryId: string): Promise<SpinResult | 'not
 - **Yes:** Transacción única en `resolveSpin` (leer + sortear + insertar). Evita giros a medias.
 - **No:** Penalización de variantes. Versión 2.
 - **No:** Guardar los pesos calculados en la fila del giro. Se puede recalcular y no forma parte del MVP.
+- **Yes:** `resolveSpin` acepta un `rng` opcional después del `categoryId` para que las pruebas de integración sean deterministas; el valor por defecto sigue siendo `Math.random`.
+- **Yes:** Sin transacción interactiva: `neon-http` no las soporta (`No transactions support in neon-http driver`). `resolveSpin` lee, calcula y escribe en una sola sentencia de inserción; las llaves foráneas impiden filas inválidas. La carrera de dos giros simultáneos queda como límite aceptado en la tabla de riesgos.
 
 ## Risks
 
 | Risk | Mitigation |
 | ---- | ---------- |
-| Dos giros simultáneos de la misma categoría leen el mismo historial | La interfaz bloquea el botón (SPEC 07) y el MVP acepta el caso residual; se documenta como límite conocido. |
+| Dos giros simultáneos de la misma categoría leen el mismo historial | La interfaz bloquea el botón (SPEC 07) y el MVP acepta el caso residual; `neon-http` no ofrece transacciones interactivas, así que se documenta como límite conocido. |
 | Redondeo de punto flotante deja la suma de probabilidades en 0,999… | Normalizar dividiendo por la suma calculada y comparar con tolerancia 1e-9 en las pruebas. |
 | Historia con muchos giros hace lenta la consulta | Índice `(categoryId, createdAt desc)` y límite 2 en la consulta. |
 
