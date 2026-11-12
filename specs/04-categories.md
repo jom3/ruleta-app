@@ -1,6 +1,6 @@
 # SPEC 04 — Categories and empty state
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Depends on:** SPEC 02
 > **Date:** 2026-11-11
 > **Objective:** Que cada usuario autenticado cree, liste y borre sus propias categorías con nombre único y vea un estado vacío cuando no tenga ninguna.
@@ -58,16 +58,16 @@ Reglas: `displayName` no vacío; máximo 40 caracteres; `normalizeName` como cla
 
 ## Acceptance criteria
 
-- [ ] Un usuario nuevo ve el mensaje de estado vacío y un formulario para crear su primera categoría.
-- [ ] Crear una categoría con nombre válido la añade a la lista sin recargar la página entera.
-- [ ] Crear una categoría con nombre vacío o solo espacios muestra un error y no guarda nada.
-- [ ] Crear "Front" teniendo "front" muestra un error de nombre repetido.
-- [ ] Dos usuarios distintos pueden tener una categoría llamada "Front".
-- [ ] Borrar pide confirmación; cancelar no borra nada.
-- [ ] Confirmar el borrado elimina la categoría y sus elementos, variantes y giros de la base de datos.
-- [ ] Tras borrar la última categoría vuelve a verse el estado vacío.
-- [ ] Abrir `/app/categories/<id de otro usuario>` responde 404.
-- [ ] La lista y el formulario se usan sin scroll horizontal en 360 px de ancho.
+- [x] Un usuario nuevo ve el mensaje de estado vacío y un formulario para crear su primera categoría.
+- [x] Crear una categoría con nombre válido la añade a la lista sin recargar la página entera.
+- [x] Crear una categoría con nombre vacío o solo espacios muestra un error y no guarda nada.
+- [x] Crear "Front" teniendo "front" muestra un error de nombre repetido.
+- [x] Dos usuarios distintos pueden tener una categoría llamada "Front".
+- [x] Borrar pide confirmación; cancelar no borra nada.
+- [x] Confirmar el borrado elimina la categoría y sus elementos, variantes y giros de la base de datos. (Las llaves en cascada de hijos se añaden en SPEC 05 y 06.)
+- [x] Tras borrar la última categoría vuelve a verse el estado vacío.
+- [x] Abrir `/app/categories/<id de otro usuario>` responde 404.
+- [x] La lista y el formulario se usan sin scroll horizontal en 360 px de ancho.
 
 ## Decisions
 
@@ -77,6 +77,9 @@ Reglas: `displayName` no vacío; máximo 40 caracteres; `normalizeName` como cla
 - **Yes:** Límite de 40 caracteres. Evita romper la lista en móvil; no está en la idea, es una decisión de producto del MVP.
 - **No:** Edición de nombre. La idea lo excluye: se borra y se crea de nuevo.
 - **No:** Confirmación con ventana del navegador (`confirm`). `<dialog>` respeta el estilo y es accesible.
+- **Yes:** El número de elementos por categoría se muestra desde SPEC 05, cuando existe la tabla `elements`. Sin ella no hay nada que contar.
+- **Yes:** La creación funciona sin JavaScript (form action de Astro). El borrado necesita JavaScript porque la confirmación es un `<dialog>` nativo.
+- **Yes:** La cascada a `elements`, `variants` y `spins` se completa con las llaves foráneas de SPEC 05 y 06; acá solo se declara `categories.user_id` en cascada.
 
 ## Risks
 

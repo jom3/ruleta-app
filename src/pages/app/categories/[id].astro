@@ -1,0 +1,44 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro'
+import { findById } from '../../../db/categories'
+
+const user = Astro.locals.user!
+const category = await findById(user.id, Astro.params.id ?? '')
+
+if (!category) {
+  Astro.response.status = 404
+}
+---
+
+<AppLayout title={category ? category.name : 'Categoría no encontrada'} user={user}>
+  <main>
+    {
+      category ? (
+        <>
+          <p class="form-alt back-link"><a href="/app">Mis categorías</a></p>
+          <h1>{category.name}</h1>
+          <p class="notice">Esta categoría todavía no tiene elementos.</p>
+        </>
+      ) : (
+        <>
+          <h1>Categoría no encontrada</h1>
+          <p class="form-alt"><a href="/app">Volver a mis categorías</a></p>
+        </>
+      )
+    }
+  </main>
+</AppLayout>
+
+<style>
+  .back-link {
+    margin-top: 0;
+    margin-bottom: var(--space-2);
+  }
+
+  .notice {
+    padding: var(--space-4);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-muted);
+  }
+</style>
