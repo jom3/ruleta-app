@@ -45,6 +45,8 @@ pnpm db:migrate
 | `RESEND_API_KEY` | API key de Resend |
 | `EMAIL_FROM` | Remitente de los correos, con dominio verificado en Resend |
 
+Para probar sin dominio propio, Resend permite `EMAIL_FROM=onboarding@resend.dev`, que solo entrega al correo dueño de la cuenta.
+
 Los secretos nunca se commitean: `.env` está en `.gitignore` y en el repo solo vive `.env.example`.
 
 ## Comprobar la conexión
