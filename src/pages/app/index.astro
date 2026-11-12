@@ -1,0 +1,14 @@
+---
+import AppHeader from '../../components/AppHeader.astro'
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const user = Astro.locals.user!
+---
+
+<BaseLayout title="Mis categorías">
+  <AppHeader email={user.email} />
+  <main>
+    <h1>Mis categorías</h1>
+    <p>Aún no tienes categorías. La gestión llega en el siguiente paso.</p>
+  </main>
+</BaseLayout>

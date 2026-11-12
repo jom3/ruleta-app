@@ -1,6 +1,6 @@
 # SPEC 02 — Authentication with email/password and Google
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Depends on:** SPEC 01
 > **Date:** 2026-11-11
 > **Objective:** Permitir registrarse y entrar con correo/contraseña o con Google, manteniendo sesión y bloqueando el acceso anónimo.

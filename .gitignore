@@ -21,6 +21,9 @@ pnpm-debug.log*
 # vercel
 .vercel/
 
+# playwright
+.playwright-mcp/
+
 # macOS-specific files
 .DS_Store
 
