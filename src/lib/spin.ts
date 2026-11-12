@@ -9,8 +9,9 @@ export type Weighted = {
 }
 
 export type SpinResult = {
-  elementId: string
-  variantId: string | null
+  spinId: string
+  element: { id: string; name: string }
+  variant: { id: string; name: string } | null
 }
 
 // recentElementIds viene del más reciente al más viejo y tiene 0, 1 o 2 ids.

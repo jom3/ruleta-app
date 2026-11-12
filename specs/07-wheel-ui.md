@@ -1,6 +1,6 @@
 # SPEC 07 — Spin endpoint and wheel animation
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Depends on:** SPEC 06
 > **Date:** 2026-11-11
 > **Objective:** Girar una categoría desde la interfaz mediante un endpoint que registra el giro y mostrar una ruleta animada de ~4 s que termina en el resultado.
@@ -52,15 +52,15 @@ type SpinResponse = {
 
 ## Acceptance criteria
 
-- [ ] Pulsar "Girar" en una categoría con 2 o más elementos anima la rueda durante ~4 s y termina mostrando el elemento ganador.
-- [ ] Si el ganador tiene variantes, el resultado muestra la variante; si no tiene, solo el elemento.
-- [ ] El resultado mostrado coincide con la fila insertada en `spins` para ese giro.
-- [ ] Durante la animación el botón no responde a clics adicionales y no se inserta ningún giro extra.
-- [ ] Recargar la página durante la animación deja el giro registrado y, al volver, la penalización incluye ese giro.
-- [ ] Una categoría con 1 elemento muestra el aviso y no llama al endpoint.
-- [ ] Llamar al endpoint sin sesión responde 401; con la categoría de otro usuario responde 404.
-- [ ] La animación y el resultado se ven completos, sin scroll horizontal, en 360 px, 768 px y 1440 px.
-- [ ] Con `prefers-reduced-motion: reduce` la rueda salta al resultado en menos de 300 ms sin animación de giro.
+- [x] Pulsar "Girar" en una categoría con 2 o más elementos anima la rueda durante ~4 s y termina mostrando el elemento ganador.
+- [x] Si el ganador tiene variantes, el resultado muestra la variante; si no tiene, solo el elemento.
+- [x] El resultado mostrado coincide con la fila insertada en `spins` para ese giro.
+- [x] Durante la animación el botón no responde a clics adicionales y no se inserta ningún giro extra.
+- [x] Recargar la página durante la animación deja el giro registrado y, al volver, la penalización incluye ese giro.
+- [x] Una categoría con 1 elemento muestra el aviso y no llama al endpoint.
+- [x] Llamar al endpoint sin sesión responde 401; con la categoría de otro usuario responde 404.
+- [x] La animación y el resultado se ven completos, sin scroll horizontal, en 360 px, 768 px y 1440 px.
+- [x] Con `prefers-reduced-motion: reduce` la rueda salta al resultado en menos de 300 ms sin animación de giro.
 
 ## Decisions
 
@@ -71,6 +71,10 @@ type SpinResponse = {
 - **Yes:** `prefers-reduced-motion` respetado. Evita mareo y es una regla de accesibilidad barata.
 - **No:** Canvas o WebGL para la rueda. El SVG con N segmentos es suficiente para el MVP.
 - **No:** Precargar las probabilidades en el cliente. El cliente no necesita saberlas y así no se filtran.
+- **Yes:** Los colores de la rueda viven en `src/styles/global.css` (`--wheel-1`…`--wheel-6`), junto al resto de los tokens: no existe un `src/styles/tokens.css` separado.
+- **Yes:** El handler se extrae a `src/lib/spin-endpoint.ts` con `lookupUser` inyectable para probar 401/404/409 sin fabricar cookies de sesión; la ruta solo delega.
+- **Yes:** La rueda se redibuja en el cliente cuando la lista de elementos cambia sin recargar. Así los segmentos siempre coinciden con los elementos reales y el ganador puede centrarse en el puntero.
+- **Yes:** Con `prefers-reduced-motion` la transición CSS es `none` y la rueda salta al ángulo final al recibir la respuesta; no hay giro de 4 s.
 
 ## Risks
 

@@ -47,7 +47,11 @@ export const LAST_SPIN_FACTOR = 0.1
 export const PREVIOUS_SPIN_FACTOR = 0.5
 
 export type Weighted = { id: string; weight: number; probability: number }
-export type SpinResult = { elementId: string; variantId: string | null }
+export type SpinResult = {
+  spinId: string
+  element: { id: string; name: string }
+  variant: { id: string; name: string } | null
+}
 
 export function computeProbabilities(
   elementIds: string[],
@@ -107,6 +111,7 @@ export async function resolveSpin(categoryId: string): Promise<SpinResult | 'not
 - **No:** Guardar los pesos calculados en la fila del giro. Se puede recalcular y no forma parte del MVP.
 - **Yes:** `resolveSpin` acepta un `rng` opcional después del `categoryId` para que las pruebas de integración sean deterministas; el valor por defecto sigue siendo `Math.random`.
 - **Yes:** Sin transacción interactiva: `neon-http` no las soporta (`No transactions support in neon-http driver`). `resolveSpin` lee, calcula y escribe en una sola sentencia de inserción; las llaves foráneas impiden filas inválidas. La carrera de dos giros simultáneos queda como límite aceptado en la tabla de riesgos.
+- **Yes:** `SpinResult` devuelve `spinId` y los nombres de elemento y variante además de los ids. La respuesta de SPEC 07 los necesita y la lectura ya trae esos datos, así que se evita una consulta extra por giro.
 
 ## Risks
 

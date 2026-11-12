@@ -45,29 +45,40 @@ export async function resolveSpin(
   rng: () => number = Math.random,
 ): Promise<SpinResult | 'not-enough-elements'> {
   const rows = await db
-    .select({ elementId: elements.id, variantId: variants.id })
+    .select({
+      elementId: elements.id,
+      elementName: elements.name,
+      variantId: variants.id,
+      variantName: variants.name,
+    })
     .from(elements)
     .leftJoin(variants, eq(variants.elementId, elements.id))
     .where(eq(elements.categoryId, categoryId))
     .orderBy(asc(elements.nameKey), asc(variants.nameKey))
 
-  const variantsByElement = new Map<string, string[]>()
+  const elementsById = new Map<string, { id: string; name: string }>()
+  const variantsByElement = new Map<string, { id: string; name: string }[]>()
 
   for (const row of rows) {
+    elementsById.set(row.elementId, { id: row.elementId, name: row.elementName })
+
     const list = variantsByElement.get(row.elementId) ?? []
-    if (row.variantId) list.push(row.variantId)
+    if (row.variantId && row.variantName) list.push({ id: row.variantId, name: row.variantName })
     variantsByElement.set(row.elementId, list)
   }
 
-  const elementIds = [...variantsByElement.keys()]
+  const elementIds = [...elementsById.keys()]
   if (elementIds.length < MIN_ELEMENTS_TO_SPIN) return 'not-enough-elements'
 
   const recentElementIds = await getRecentElementIds(categoryId)
   const entries = computeProbabilities(elementIds, recentElementIds)
   const elementId = drawWeighted(entries, rng)
-  const variantId = pickVariant(variantsByElement.get(elementId) ?? [], rng)
 
-  await recordSpin({ categoryId, elementId, variantId })
+  const variantOptions = variantsByElement.get(elementId) ?? []
+  const variantId = pickVariant(variantOptions.map((variant) => variant.id), rng)
+  const variant = variantOptions.find((option) => option.id === variantId) ?? null
 
-  return { elementId, variantId }
+  const spin = await recordSpin({ categoryId, elementId, variantId })
+
+  return { spinId: spin.id, element: elementsById.get(elementId)!, variant }
 }
