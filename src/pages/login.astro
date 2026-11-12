@@ -1,0 +1,77 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+if (Astro.locals.user) {
+  return Astro.redirect('/app')
+}
+---
+
+<BaseLayout title="Iniciar sesión">
+  <main>
+    <h1>Iniciar sesión</h1>
+    <form id="login-form" novalidate>
+      <p class="form-error" id="login-error" role="alert"></p>
+
+      <label for="email">Correo</label>
+      <input id="email" name="email" type="email" autocomplete="email" required />
+
+      <label for="password">Contraseña</label>
+      <input
+        id="password"
+        name="password"
+        type="password"
+        autocomplete="current-password"
+        required
+      />
+
+      <button type="submit" id="login-submit">Entrar</button>
+    </form>
+
+    <button type="button" class="secondary" id="google-login" style="margin-top: 0.75rem">
+      Continuar con Google
+    </button>
+
+    <p class="form-alt">
+      ¿No tienes cuenta? <a href="/register">Crea una</a> ·
+      <a href="/forgot-password">Olvidé mi contraseña</a>
+    </p>
+  </main>
+</BaseLayout>
+
+<script>
+  import { createAuthClient } from 'better-auth/client'
+
+  const authClient = createAuthClient()
+  const form = document.querySelector<HTMLFormElement>('#login-form')!
+  const errorBox = document.querySelector<HTMLParagraphElement>('#login-error')!
+  const submitButton = document.querySelector<HTMLButtonElement>('#login-submit')!
+  const googleButton = document.querySelector<HTMLButtonElement>('#google-login')!
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    errorBox.textContent = ''
+
+    const data = new FormData(form)
+    const email = String(data.get('email') ?? '').trim()
+    const password = String(data.get('password') ?? '')
+
+    submitButton.disabled = true
+    const { error } = await authClient.signIn.email({ email, password })
+    submitButton.disabled = false
+
+    if (error) {
+      errorBox.textContent = 'Correo o contraseña incorrectos'
+      return
+    }
+
+    window.location.assign('/app')
+  })
+
+  googleButton.addEventListener('click', async () => {
+    errorBox.textContent = ''
+    const { error } = await authClient.signIn.social({ provider: 'google', callbackURL: '/app' })
+    if (error) {
+      errorBox.textContent = 'No se pudo conectar con Google. Usa tu correo y contraseña.'
+    }
+  })
+</script>
