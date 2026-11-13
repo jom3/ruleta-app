@@ -12,8 +12,17 @@ const { title, user } = Astro.props
 
 <BaseLayout title={title}>
   <header class="app-header">
-    <span class="app-header__email" title={user.email}>{user.email}</span>
-    <button type="button" class="secondary app-header__logout" id="logout">Cerrar sesión</button>
+    <div class="app-header__inner">
+      <a class="brand" href="/app">
+        <span class="brand__mark" aria-hidden="true"></span>
+        <span class="brand__name">Ruleta</span>
+      </a>
+
+      <div class="app-header__account">
+        <span class="app-header__email" title={user.email}>{user.email}</span>
+        <button type="button" class="secondary app-header__logout" id="logout">Cerrar sesión</button>
+      </div>
+    </div>
   </header>
 
   <slot />
@@ -21,26 +30,85 @@ const { title, user } = Astro.props
 
 <style>
   .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 1px solid var(--line);
+    background: rgb(10 16 14 / 0.82);
+    backdrop-filter: blur(10px);
+  }
+
+  .app-header__inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-4);
-    padding: var(--space-4);
-    border-bottom: 1px solid var(--color-border);
-    background: var(--color-surface);
+    width: min(100% - 2rem, 72rem);
+    margin: 0 auto;
+    padding: var(--space-2) 0;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--text);
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+
+  .brand:hover {
+    color: var(--text);
+  }
+
+  .brand__mark {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: conic-gradient(
+      var(--wheel-1) 0 90deg,
+      var(--wheel-3) 90deg 180deg,
+      var(--wheel-2) 180deg 270deg,
+      var(--wheel-4) 270deg
+    );
+    box-shadow: 0 0 0 1px var(--line-strong);
+  }
+
+  .brand__name {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .app-header__account {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
   }
 
   .app-header__email {
     overflow: hidden;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: var(--color-muted);
-    font-size: 0.875rem;
   }
 
   .app-header__logout {
     width: auto;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.8125rem;
     flex-shrink: 0;
+  }
+
+  @media (max-width: 34rem) {
+    .app-header__email {
+      display: none;
+    }
   }
 </style>
 
