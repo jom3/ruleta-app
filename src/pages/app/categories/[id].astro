@@ -13,122 +13,151 @@ if (!category) {
 }
 
 const elements = category ? await listWithVariants(category.id) : []
+const elementCount = (count: number): string => (count === 1 ? '1 elemento' : `${count} elementos`)
 ---
 
 <AppLayout title={category ? category.name : 'Categoría no encontrada'} user={user}>
-  <main data-category-id={category?.id}>
+  <main class="app-main" data-category-id={category?.id}>
     {
       category ? (
         <>
-          <p class="form-alt back-link">
-            <a href="/app">Mis categorías</a>
-          </p>
-          <h1>{category.name}</h1>
+          <nav class="crumbs">
+            <a href="/app">← Mis categorías</a>
+          </nav>
 
-          <SpinPanel
-            categoryId={category.id}
-            elements={elements.map((element) => ({ id: element.id, name: element.name }))}
-          />
-
-          <form id="element-form" class="element-form" method="POST" action={actions.createElement}>
-            <input type="hidden" name="categoryId" value={category.id} />
-            <label for="element-name">Nuevo elemento</label>
-            <div class="row">
-              <input
-                id="element-name"
-                name="name"
-                type="text"
-                maxlength="40"
-                autocomplete="off"
-                required
-              />
-              <button type="submit" id="element-submit">Añadir</button>
+          <header class="page-head">
+            <p class="eyebrow">Categoría</p>
+            <div class="page-head__row">
+              <h1>{category.name}</h1>
+              <p class="page-head__meta" id="page-count">{elementCount(elements.length)}</p>
             </div>
-            <p class="form-error" id="element-error" role="alert"></p>
-          </form>
+          </header>
 
-          <p class="empty-state" id="elements-empty" hidden={elements.length > 0}>
-            Añade tu primer elemento.
-          </p>
+          <div class="category-layout">
+            <SpinPanel
+              categoryId={category.id}
+              elements={elements.map((element) => ({ id: element.id, name: element.name }))}
+            />
 
-          <ul class="element-list" id="element-list" hidden={elements.length === 0}>
-            {
-              elements.map((element) => (
-                <li class="element" data-id={element.id} data-key={element.name.toLowerCase()}>
+            <section class="elements-panel card">
+              <div class="elements-panel__head">
+                <p class="eyebrow">Elementos</p>
+                <span class="elements-panel__count" id="elements-count">{elements.length}</span>
+              </div>
+
+              <form id="element-form" class="inline-form" method="POST" action={actions.createElement}>
+                <label for="element-name">Añadir elemento</label>
+                <div class="inline-form__row">
+                  <input
+                    id="element-name"
+                    name="name"
+                    type="text"
+                    maxlength="40"
+                    autocomplete="off"
+                    placeholder="Ej. Camiseta"
+                    required
+                  />
+                  <button type="submit" id="element-submit">Añadir</button>
+                </div>
+                <p class="form-error" id="element-error" role="alert"></p>
+              </form>
+
+              <p class="empty-state" id="elements-empty" hidden={elements.length > 0}>
+                Añade tu primer elemento para poder girar.
+              </p>
+
+              <ul class="element-list" id="element-list" hidden={elements.length === 0}>
+                {
+                  elements.map((element) => (
+                    <li class="element" data-id={element.id} data-key={element.name.toLowerCase()}>
+                      <div class="element__head">
+                        <h2 class="element__name">{element.name}</h2>
+                        <button
+                          type="button"
+                          class="ghost danger small"
+                          data-delete-element
+                          aria-label={`Borrar ${element.name}`}
+                        >
+                          Borrar
+                        </button>
+                      </div>
+
+                      <ul class="variant-list">
+                        {element.variants.map((variant) => (
+                          <li class="variant" data-id={variant.id} data-element-id={element.id}>
+                            <span class="variant__name">{variant.name}</span>
+                            <button
+                              type="button"
+                              class="variant__delete"
+                              data-delete-variant
+                              aria-label={`Borrar variante ${variant.name}`}
+                            >
+                              <span aria-hidden="true">×</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <p class="variant-empty" hidden={element.variants.length > 0}>
+                        Sin variantes
+                      </p>
+
+                      <p class="form-error variant-error" role="alert"></p>
+
+                      <form class="variant-form" method="POST" action={actions.createVariant}>
+                        <input type="hidden" name="elementId" value={element.id} />
+                        <input
+                          name="name"
+                          type="text"
+                          maxlength="40"
+                          autocomplete="off"
+                          placeholder="Nueva variante"
+                          aria-label={`Nueva variante de ${element.name}`}
+                          required
+                        />
+                        <button type="submit" class="ghost small">Añadir</button>
+                      </form>
+                    </li>
+                  ))
+                }
+              </ul>
+
+              <template id="element-template">
+                <li class="element">
                   <div class="element__head">
-                    <h2 class="element__name">{element.name}</h2>
-                    <button type="button" class="secondary small" data-delete-element>
+                    <h2 class="element__name"></h2>
+                    <button type="button" class="ghost danger small" data-delete-element>
                       Borrar
                     </button>
                   </div>
-
-                  <ul class="variant-list">
-                    {element.variants.map((variant) => (
-                      <li class="variant" data-id={variant.id} data-element-id={element.id}>
-                        <span class="variant__name">{variant.name}</span>
-                        <button type="button" class="secondary small" data-delete-variant>
-                          Borrar
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <p class="variant-empty" hidden={element.variants.length > 0}>
-                    Sin variantes
-                  </p>
-
+                  <ul class="variant-list"></ul>
+                  <p class="variant-empty">Sin variantes</p>
                   <p class="form-error variant-error" role="alert"></p>
-
-                  <form class="variant-form" method="POST" action={actions.createVariant}>
-                    <input type="hidden" name="elementId" value={element.id} />
+                  <form class="variant-form" method="POST">
                     <input
                       name="name"
                       type="text"
                       maxlength="40"
                       autocomplete="off"
                       placeholder="Nueva variante"
-                      aria-label={`Nueva variante de ${element.name}`}
+                      aria-label="Nueva variante"
                       required
                     />
-                    <button type="submit" class="secondary small">
-                      Añadir variante
-                    </button>
+                    <button type="submit" class="ghost small">Añadir</button>
                   </form>
                 </li>
-              ))
-            }
-          </ul>
+              </template>
 
-          <template id="element-template">
-            <li class="element">
-              <div class="element__head">
-                <h2 class="element__name"></h2>
-                <button type="button" class="secondary small" data-delete-element>Borrar</button>
-              </div>
-              <ul class="variant-list"></ul>
-              <p class="variant-empty">Sin variantes</p>
-              <p class="form-error variant-error" role="alert"></p>
-              <form class="variant-form" method="POST">
-                <input
-                  name="name"
-                  type="text"
-                  maxlength="40"
-                  autocomplete="off"
-                  placeholder="Nueva variante"
-                  aria-label="Nueva variante"
-                  required
-                />
-                <button type="submit" class="secondary small">Añadir variante</button>
-              </form>
-            </li>
-          </template>
-
-          <template id="variant-template">
-            <li class="variant">
-              <span class="variant__name"></span>
-              <button type="button" class="secondary small" data-delete-variant>Borrar</button>
-            </li>
-          </template>
+              <template id="variant-template">
+                <li class="variant">
+                  <span class="variant__name"></span>
+                  <button type="button" class="variant__delete" data-delete-variant>
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </li>
+              </template>
+            </section>
+          </div>
 
           <dialog id="delete-dialog" class="confirm-dialog">
             <p id="delete-text"></p>
@@ -140,8 +169,10 @@ const elements = category ? await listWithVariants(category.id) : []
         </>
       ) : (
         <>
+          <nav class="crumbs">
+            <a href="/app">← Mis categorías</a>
+          </nav>
           <h1>Categoría no encontrada</h1>
-          <p class="form-alt"><a href="/app">Volver a mis categorías</a></p>
         </>
       )
     }
@@ -149,47 +180,123 @@ const elements = category ? await listWithVariants(category.id) : []
 </AppLayout>
 
 <style>
-  .back-link {
-    margin-top: 0;
-    margin-bottom: var(--space-2);
+  .crumbs {
+    margin-bottom: var(--space-4);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
   }
 
-  .row {
+  .crumbs a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  .crumbs a:hover {
+    color: var(--brass);
+  }
+
+  .page-head {
+    margin-bottom: var(--space-6);
+  }
+
+  .page-head__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+  }
+
+  .page-head__meta {
+    margin: 0;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .category-layout {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  @media (min-width: 64rem) {
+    .category-layout {
+      grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+      align-items: start;
+    }
+  }
+
+  .elements-panel {
+    padding: var(--space-4);
+  }
+
+  .elements-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+
+  .elements-panel__head .eyebrow {
+    margin: 0;
+  }
+
+  .elements-panel__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.75rem;
+    height: 1.75rem;
+    padding: 0 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--brass);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .inline-form__row {
     display: flex;
     gap: var(--space-2);
   }
 
-  .row input {
+  .inline-form__row input {
     margin-bottom: 0;
     min-width: 0;
   }
 
-  .row button {
+  .inline-form__row button {
     width: auto;
     flex-shrink: 0;
   }
 
+  .inline-form .form-error {
+    margin: var(--space-2) 0 0;
+  }
+
   .empty-state {
+    margin: var(--space-4) 0 0;
     padding: var(--space-6);
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius);
-    color: var(--color-muted);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-md);
+    color: var(--muted);
     text-align: center;
   }
 
   .element-list {
     list-style: none;
-    margin: 0;
+    margin: var(--space-4) 0 0;
     padding: 0;
-    display: grid;
-    gap: var(--space-3);
   }
 
   .element {
-    padding: var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    background: var(--color-surface);
+    padding: var(--space-4) 0;
+    border-top: 1px solid var(--line);
   }
 
   .element__head {
@@ -200,34 +307,51 @@ const elements = category ? await listWithVariants(category.id) : []
   }
 
   .element__name {
-    margin: 0;
-    font-size: 1.125rem;
+    font-size: 1.2rem;
     overflow-wrap: anywhere;
   }
 
-  .small {
+  .ghost {
     width: auto;
-    padding: var(--space-1) var(--space-3);
-    font-size: 0.875rem;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.8125rem;
+    font-weight: 500;
     flex-shrink: 0;
   }
 
+  .ghost:hover:not(:disabled) {
+    background: var(--ink-600);
+    color: var(--text);
+    filter: none;
+  }
+
+  .ghost.danger:hover:not(:disabled) {
+    background: rgb(226 104 92 / 0.12);
+    color: var(--danger);
+  }
+
   .variant-list {
-    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
     margin: var(--space-3) 0 0;
     padding: 0;
-    display: grid;
-    gap: var(--space-2);
+    list-style: none;
   }
 
   .variant {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius);
-    background: var(--color-bg);
+    gap: 0.15rem;
+    max-width: 100%;
+    padding: 0.15rem 0.15rem 0.15rem 0.65rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--ink-600);
+    font-size: 0.8125rem;
   }
 
   .variant__name {
@@ -235,10 +359,29 @@ const elements = category ? await listWithVariants(category.id) : []
     overflow-wrap: anywhere;
   }
 
+  .variant__delete {
+    width: 1.4rem;
+    height: 1.4rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .variant__delete:hover:not(:disabled) {
+    background: rgb(226 104 92 / 0.14);
+    color: var(--danger);
+    filter: none;
+  }
+
   .variant-empty {
     margin: var(--space-3) 0 0;
-    color: var(--color-muted);
-    font-size: 0.875rem;
+    color: var(--muted);
+    font-size: 0.8125rem;
   }
 
   .variant-form {
@@ -248,32 +391,31 @@ const elements = category ? await listWithVariants(category.id) : []
   }
 
   .variant-form input {
-    margin-bottom: 0;
     min-width: 0;
+    margin-bottom: 0;
+    border-color: var(--line);
+    background: var(--ink-800);
+    font-size: 0.875rem;
   }
 
-  .confirm-dialog {
-    max-width: min(90vw, 24rem);
-    padding: var(--space-6);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    background: var(--color-surface);
-    color: var(--color-text);
+  .variant-form button {
+    flex-shrink: 0;
   }
 
-  .confirm-dialog::backdrop {
-    background: rgb(0 0 0 / 0.6);
+  .variant-error {
+    margin: var(--space-2) 0 0;
   }
 
-  .confirm-dialog__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-2);
-    margin-top: var(--space-4);
-  }
+  @media (max-width: 30rem) {
+    .inline-form__row,
+    .variant-form {
+      flex-wrap: wrap;
+    }
 
-  .confirm-dialog__actions button {
-    width: auto;
+    .inline-form__row button,
+    .variant-form button {
+      width: 100%;
+    }
   }
 </style>
 
@@ -287,6 +429,8 @@ const elements = category ? await listWithVariants(category.id) : []
   const elementInput = document.querySelector<HTMLInputElement>('#element-name')
   const elementSubmit = document.querySelector<HTMLButtonElement>('#element-submit')
   const errorBox = document.querySelector<HTMLParagraphElement>('#element-error')
+  const pageCount = document.querySelector<HTMLParagraphElement>('#page-count')
+  const elementsCount = document.querySelector<HTMLSpanElement>('#elements-count')
   const elementTemplate = document.querySelector<HTMLTemplateElement>('#element-template')
   const variantTemplate = document.querySelector<HTMLTemplateElement>('#variant-template')
   const dialog = document.querySelector<HTMLDialogElement>('#delete-dialog')
@@ -302,6 +446,8 @@ const elements = category ? await listWithVariants(category.id) : []
     !elementInput ||
     !elementSubmit ||
     !errorBox ||
+    !pageCount ||
+    !elementsCount ||
     !elementTemplate ||
     !variantTemplate ||
     !dialog ||
@@ -318,6 +464,10 @@ const elements = category ? await listWithVariants(category.id) : []
 
   let pendingDelete: { kind: 'element' | 'variant'; id: string; item: HTMLLIElement } | null = null
 
+  function elementLabel(count: number): string {
+    return count === 1 ? '1 elemento' : `${count} elementos`
+  }
+
   function syncState(): void {
     const elements = [...list.querySelectorAll<HTMLLIElement>('.element')].map((item) => ({
       id: item.dataset.id!,
@@ -327,6 +477,8 @@ const elements = category ? await listWithVariants(category.id) : []
 
     emptyState.hidden = count > 0
     list.hidden = count === 0
+    pageCount.textContent = elementLabel(count)
+    elementsCount.textContent = String(count)
     window.dispatchEvent(new CustomEvent('elements-changed', { detail: { elements } }))
   }
 
@@ -335,6 +487,9 @@ const elements = category ? await listWithVariants(category.id) : []
     item.dataset.id = variant.id
     item.dataset.elementId = elementId
     item.querySelector('.variant__name')!.textContent = variant.name
+    item
+      .querySelector<HTMLButtonElement>('[data-delete-variant]')!
+      .setAttribute('aria-label', `Borrar variante ${variant.name}`)
     return item
   }
 
@@ -347,6 +502,12 @@ const elements = category ? await listWithVariants(category.id) : []
     item.dataset.id = element.id
     item.dataset.key = element.name.toLowerCase()
     item.querySelector('.element__name')!.textContent = element.name
+    item
+      .querySelector<HTMLButtonElement>('[data-delete-element]')!
+      .setAttribute('aria-label', `Borrar ${element.name}`)
+    item
+      .querySelector<HTMLInputElement>('.variant-form input[name="name"]')!
+      .setAttribute('aria-label', `Nueva variante de ${element.name}`)
 
     for (const variant of element.variants) {
       variantListOf(item).append(buildVariant(element.id, variant))
