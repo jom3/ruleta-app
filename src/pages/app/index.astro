@@ -14,18 +14,25 @@ const createError = createResult?.error?.message ?? ''
 ---
 
 <AppLayout title="Mis categorías" user={user}>
-  <main>
-    <h1>Mis categorías</h1>
+  <main class="app-main">
+    <header class="page-head">
+      <p class="eyebrow">Tus sorteos</p>
+      <h1>Mis categorías</h1>
+      <p class="page-sub">
+        Cada categoría guarda sus elementos y recuerda los últimos giros para no repetir.
+      </p>
+    </header>
 
-    <form id="create-form" class="create-form" method="POST" action={actions.createCategory}>
+    <form id="create-form" class="create-card card" method="POST" action={actions.createCategory}>
       <label for="category-name">Nueva categoría</label>
-      <div class="create-form__row">
+      <div class="create-card__row">
         <input
           id="category-name"
           name="name"
           type="text"
           maxlength="40"
           autocomplete="off"
+          placeholder="Ej. Qué me pongo"
           required
         />
         <button type="submit" id="create-submit">Crear</button>
@@ -34,17 +41,24 @@ const createError = createResult?.error?.message ?? ''
     </form>
 
     <p class="empty-state" id="empty-state" hidden={categories.length > 0}>
-      Crea tu primera categoría para empezar
+      Todavía no hay categorías. Crea la primera arriba y empieza a girar.
     </p>
 
-    <ul class="category-list" id="category-list" hidden={categories.length === 0}>
+    <ul class="category-grid" id="category-list" hidden={categories.length === 0}>
       {
         categories.map((category) => (
-          <li class="category" data-id={category.id} data-key={category.name.toLowerCase()}>
-            <a class="category__name" href={`/app/categories/${category.id}`}>{category.name}</a>
-            <span class="category__count">{formatElementCount(category.elementCount)}</span>
-            <button type="button" class="secondary category__delete" data-delete={category.id}>
-              Borrar
+          <li class="category card" data-id={category.id} data-key={category.name.toLowerCase()}>
+            <a class="category__link" href={`/app/categories/${category.id}`}>
+              <span class="category__title">{category.name}</span>
+              <span class="category__count">{formatElementCount(category.elementCount)}</span>
+            </a>
+            <button
+              type="button"
+              class="category__delete"
+              data-delete={category.id}
+              aria-label={`Borrar ${category.name}`}
+            >
+              <span aria-hidden="true">×</span>
             </button>
           </li>
         ))
@@ -52,10 +66,14 @@ const createError = createResult?.error?.message ?? ''
     </ul>
 
     <template id="category-template">
-      <li class="category">
-        <a class="category__name"></a>
-        <span class="category__count"></span>
-        <button type="button" class="secondary category__delete">Borrar</button>
+      <li class="category card">
+        <a class="category__link">
+          <span class="category__title"></span>
+          <span class="category__count"></span>
+        </a>
+        <button type="button" class="category__delete" data-delete>
+          <span aria-hidden="true">×</span>
+        </button>
       </li>
     </template>
 
@@ -70,96 +88,120 @@ const createError = createResult?.error?.message ?? ''
 </AppLayout>
 
 <style>
-  .create-form__row {
+  .page-head {
+    margin-bottom: var(--space-6);
+  }
+
+  .page-sub {
+    max-width: 38rem;
+    margin: var(--space-2) 0 0;
+    color: var(--muted);
+  }
+
+  .create-card {
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+  }
+
+  .create-card__row {
     display: flex;
     gap: var(--space-2);
   }
 
-  .create-form__row input {
+  .create-card__row input {
     margin-bottom: 0;
     min-width: 0;
   }
 
-  .create-form__row button {
+  .create-card__row button {
     width: auto;
     flex-shrink: 0;
+  }
+
+  .create-card .form-error {
+    margin: var(--space-2) 0 0;
   }
 
   .empty-state {
-    padding: var(--space-6);
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius);
-    color: var(--color-muted);
+    padding: var(--space-8) var(--space-4);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-md);
+    color: var(--muted);
     text-align: center;
   }
 
-  .category-list {
-    list-style: none;
+  .category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: var(--space-3);
     margin: 0;
     padding: 0;
-    display: grid;
-    gap: var(--space-2);
+    list-style: none;
   }
 
   .category {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding: var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    background: var(--color-surface);
+    position: relative;
+    transition:
+      border-color 160ms var(--ease),
+      transform 160ms var(--ease),
+      box-shadow 160ms var(--ease);
   }
 
-  .category__name {
+  .category:hover,
+  .category:focus-within {
+    border-color: var(--line-strong);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .category__link {
+    display: grid;
+    gap: var(--space-1);
     min-width: 0;
-    flex: 1;
-    overflow-wrap: anywhere;
-    color: var(--color-text);
+    padding: var(--space-4) 3rem var(--space-4) var(--space-4);
+    color: var(--text);
     text-decoration: none;
   }
 
-  .category__name:hover {
-    color: var(--color-accent);
+  .category__link:hover {
+    color: var(--text);
+  }
+
+  .category__title {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
   }
 
   .category__count {
-    flex-shrink: 0;
-    color: var(--color-muted);
-    font-size: 0.75rem;
-    white-space: nowrap;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
   }
 
   .category__delete {
-    width: auto;
-    flex-shrink: 0;
-    padding: var(--space-1) var(--space-3);
-    font-size: 0.875rem;
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted);
+    font-size: 1.15rem;
+    line-height: 1;
   }
 
-  .confirm-dialog {
-    max-width: min(90vw, 24rem);
-    padding: var(--space-6);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    background: var(--color-surface);
-    color: var(--color-text);
-  }
-
-  .confirm-dialog::backdrop {
-    background: rgb(0 0 0 / 0.6);
-  }
-
-  .confirm-dialog__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-2);
-    margin-top: var(--space-4);
-  }
-
-  .confirm-dialog__actions button {
-    width: auto;
+  .category__delete:hover:not(:disabled) {
+    background: rgb(226 104 92 / 0.14);
+    color: var(--danger);
+    filter: none;
   }
 </style>
 
@@ -191,12 +233,16 @@ const createError = createResult?.error?.message ?? ''
     item.dataset.id = category.id
     item.dataset.key = category.name.toLowerCase()
 
-    const link = item.querySelector<HTMLAnchorElement>('.category__name')!
+    const link = item.querySelector<HTMLAnchorElement>('.category__link')!
     link.href = `/app/categories/${category.id}`
-    link.textContent = category.name
+    link.setAttribute('aria-label', category.name)
 
+    item.querySelector('.category__title')!.textContent = category.name
     item.querySelector('.category__count')!.textContent = '0 elementos'
-    item.querySelector<HTMLButtonElement>('.category__delete')!.dataset.delete = category.id
+
+    const deleteButton = item.querySelector<HTMLButtonElement>('.category__delete')!
+    deleteButton.dataset.delete = category.id
+    deleteButton.setAttribute('aria-label', `Borrar ${category.name}`)
     return item
   }
 
@@ -237,7 +283,7 @@ const createError = createResult?.error?.message ?? ''
     if (!button || !item) return
 
     pendingDelete = { id: button.dataset.delete!, item }
-    deleteName.textContent = item.querySelector('.category__name')?.textContent ?? ''
+    deleteName.textContent = item.querySelector('.category__title')?.textContent ?? ''
     dialog.showModal()
   })
 

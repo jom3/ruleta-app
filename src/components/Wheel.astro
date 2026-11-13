@@ -1,4 +1,6 @@
 ---
+import { labelAt, labelRotation, labelSize, segmentPath, shortLabel, wheelColor } from '../lib/wheel'
+
 interface Props {
   elements: { id: string; name: string }[]
 }
@@ -6,26 +8,7 @@ interface Props {
 const { elements } = Astro.props
 const count = elements.length
 const step = count > 0 ? 360 / count : 360
-
-const pointAt = (angle: number, radius: number) => {
-  const radians = (angle * Math.PI) / 180
-  return {
-    x: (100 + radius * Math.sin(radians)).toFixed(2),
-    y: (100 - radius * Math.cos(radians)).toFixed(2),
-  }
-}
-
-const centerAngle = (index: number) => (index + 0.5) * step
-
-const segmentPath = (index: number) => {
-  const start = pointAt(index * step, 100)
-  const end = pointAt((index + 1) * step, 100)
-  const largeArc = step > 180 ? 1 : 0
-  return `M 100 100 L ${start.x} ${start.y} A 100 100 0 ${largeArc} 1 ${end.x} ${end.y} Z`
-}
-
-const shortName = (name: string) => (name.length > 12 ? `${name.slice(0, 11)}…` : name)
-const elementWord = (total: number) => (total === 1 ? 'elemento' : 'elementos')
+const fontSize = labelSize(count)
 ---
 
 <div class="wheel">
@@ -34,41 +17,51 @@ const elementWord = (total: number) => (total === 1 ? 'elemento' : 'elementos')
     class="wheel__svg"
     viewBox="0 0 200 200"
     role="img"
-    aria-label={`Ruleta con ${count} ${elementWord(count)}`}
+    aria-label={`Ruleta con ${count} ${count === 1 ? 'elemento' : 'elementos'}`}
   >
-    <circle class="wheel__empty" cx="100" cy="100" r="96" />
+    <circle class="wheel__field" cx="100" cy="100" r="96" />
     <g class="wheel__disc">
       {
         elements.map((element, index) => {
-          const angle = centerAngle(index)
-          const label = pointAt(angle, 62)
+          const angle = index * step
+          const label = labelAt(index, step)
+          const color = wheelColor(index)
           return (
             <g data-element-id={element.id}>
               <title>{element.name}</title>
-              <path d={segmentPath(index)} fill={`var(--wheel-${(index % 6) + 1})`} />
+              <path
+                d={segmentPath(index, step)}
+                fill={color.fill}
+                stroke="var(--ink-700)"
+                stroke-width="1"
+              />
               <text
                 class="wheel__label"
                 x={label.x}
                 y={label.y}
-                transform={`rotate(${angle.toFixed(2)} ${label.x} ${label.y})`}
+                fill={color.ink}
+                font-size={fontSize}
+                transform={`rotate(${labelRotation(angle)} ${label.x} ${label.y})`}
                 text-anchor="middle"
                 dominant-baseline="middle"
               >
-                {shortName(element.name)}
+                {shortLabel(element.name)}
               </text>
             </g>
           )
         })
       }
     </g>
-    <circle class="wheel__hub" cx="100" cy="100" r="7" />
+    <circle class="wheel__ring" cx="100" cy="100" r="97" />
+    <circle class="wheel__hub" cx="100" cy="100" r="6" />
+    <circle class="wheel__hub-dot" cx="100" cy="100" r="2.2" />
   </svg>
 </div>
 
 <style>
   .wheel {
     position: relative;
-    width: clamp(240px, 78vw, 420px);
+    width: clamp(240px, 74vw, 440px);
     max-width: 100%;
     margin: 0 auto var(--space-4);
     aspect-ratio: 1;
@@ -88,39 +81,47 @@ const elementWord = (total: number) => (total === 1 ? 'elemento' : 'elementos')
     will-change: transform;
   }
 
+  .wheel__field {
+    fill: none;
+    stroke: var(--line-strong);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 5;
+  }
+
+  .wheel__ring {
+    fill: none;
+    stroke: var(--brass);
+    stroke-width: 1.5;
+    opacity: 0.5;
+  }
+
   .wheel__label {
-    fill: #16181d;
-    font-family: var(--font-sans);
-    font-size: 8px;
+    font-family: var(--font-body);
     font-weight: 600;
+    letter-spacing: -0.01em;
     pointer-events: none;
   }
 
   .wheel__hub {
-    fill: var(--color-bg);
-    stroke: var(--color-accent);
-    stroke-width: 3;
+    fill: var(--brass);
   }
 
-  .wheel__empty {
-    fill: none;
-    stroke: var(--color-border);
-    stroke-width: 2;
-    stroke-dasharray: 6 6;
+  .wheel__hub-dot {
+    fill: var(--ink-800);
   }
 
   .wheel__pointer {
     position: absolute;
-    top: -4px;
+    top: -9px;
     left: 50%;
     z-index: 1;
-    width: 0;
-    height: 0;
+    width: 24px;
+    height: 26px;
     transform: translateX(-50%);
-    border-left: 9px solid transparent;
-    border-right: 9px solid transparent;
-    border-top: 18px solid var(--color-accent);
-    filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.5));
+    border-radius: 3px;
+    background: linear-gradient(180deg, var(--brass-strong), var(--brass));
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    filter: drop-shadow(0 4px 8px rgb(0 0 0 / 0.55));
   }
 
   @media (prefers-reduced-motion: reduce) {

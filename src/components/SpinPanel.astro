@@ -10,8 +10,17 @@ const { categoryId, elements } = Astro.props
 const canSpin = elements.length >= 2
 ---
 
-<section class="spin-panel" data-category-id={categoryId}>
+<section class="spin-card card" data-category-id={categoryId}>
+  <div class="spin-card__head">
+    <p class="eyebrow">Sorteo</p>
+    <span class="spin-card__count" id="wheel-count">{elements.length} en la rueda</span>
+  </div>
+
   <Wheel elements={elements} />
+
+  <ul class="legend" aria-label="Elementos de la ruleta">
+    {elements.map((element) => <li class="legend__item">{element.name}</li>)}
+  </ul>
 
   <button type="button" id="spin-button" disabled={!canSpin}>Girar</button>
 
@@ -20,62 +29,239 @@ const canSpin = elements.length >= 2
   </p>
 
   <p class="spin-status" id="spin-status" role="status" aria-live="polite"></p>
-  <p class="spin-result" id="spin-result" aria-live="polite"></p>
 
-  <ul class="spin-legend" aria-label="Nombres de los elementos de la ruleta">
-    {elements.map((element) => <li>{element.name}</li>)}
-  </ul>
+  <div class="ticket" id="spin-ticket" hidden>
+    <div class="ticket__head">
+      <span class="ticket__eyebrow">Resultado</span>
+      <span class="ticket__serial" id="ticket-serial"></span>
+    </div>
+    <p class="ticket__element" id="ticket-element"></p>
+    <div class="ticket__variant" id="ticket-variant" hidden>
+      <span class="ticket__variant-label">Variante</span>
+      <span class="ticket__reel-window">
+        <span class="ticket__reel" id="ticket-reel"></span>
+      </span>
+    </div>
+  </div>
+
+  <p class="sr-only" id="spin-announce" aria-live="polite"></p>
 </section>
 
 <style>
-  .spin-panel {
-    margin-bottom: var(--space-6);
+  .spin-card {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-4);
+    background: var(--ink-700);
+  }
+
+  .spin-card__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+
+  .spin-card__head .eyebrow {
+    margin: 0;
+  }
+
+  .spin-card__count {
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-1) var(--space-2);
+    margin: 0 0 var(--space-4);
+    padding: 0;
+    list-style: none;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .legend__item {
+    overflow-wrap: anywhere;
+  }
+
+  .legend__item:not(:last-child)::after {
+    content: '·';
+    margin-left: var(--space-2);
+    color: var(--muted);
   }
 
   .spin-warning {
-    margin: var(--space-2) 0 0;
-    color: var(--color-muted);
+    margin: var(--space-3) 0 0;
+    color: var(--muted);
     font-size: 0.875rem;
     text-align: center;
   }
 
   .spin-status {
-    margin: var(--space-2) 0 0;
-    color: var(--color-muted);
-    font-size: 0.875rem;
+    min-height: 1.2em;
+    margin: var(--space-3) 0 0;
+    color: var(--brass);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
     text-align: center;
   }
 
-  .spin-result {
-    margin: var(--space-2) 0 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    text-align: center;
-    overflow-wrap: anywhere;
+  .ticket {
+    position: relative;
+    margin-top: var(--space-4);
+    padding: var(--space-4) var(--space-4) var(--space-3);
+    border-radius: 6px;
+    background: var(--cream);
+    color: var(--cream-ink);
+    box-shadow: var(--shadow-lift);
+    transform: rotate(-1.2deg);
   }
 
-  .spin-result:empty {
+  .ticket[hidden] {
     display: none;
   }
 
-  .spin-legend {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: var(--space-1) var(--space-3);
-    margin: var(--space-4) 0 0;
-    padding: 0;
-    list-style: none;
-    color: var(--color-muted);
-    font-size: 0.8125rem;
+  .ticket.is-revealed {
+    animation: ticket-in 420ms var(--ease) both;
   }
 
-  .spin-legend li {
+  .ticket::before,
+  .ticket::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--ink-700);
+    transform: translateY(-50%);
+  }
+
+  .ticket::before {
+    left: -7px;
+  }
+
+  .ticket::after {
+    right: -7px;
+  }
+
+  .ticket__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px dashed rgb(26 23 16 / 0.28);
+  }
+
+  .ticket__eyebrow,
+  .ticket__serial,
+  .ticket__variant-label {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .ticket__eyebrow {
+    color: rgb(26 23 16 / 0.62);
+  }
+
+  .ticket__serial {
+    color: rgb(26 23 16 / 0.45);
+  }
+
+  .ticket__element {
+    margin: var(--space-3) 0 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
     overflow-wrap: anywhere;
+  }
+
+  .ticket__variant {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+
+  .ticket__variant[hidden] {
+    display: none;
+  }
+
+  .ticket__variant-label {
+    color: rgb(26 23 16 / 0.55);
+  }
+
+  .ticket__reel-window {
+    min-width: 5rem;
+    max-width: 70%;
+    padding: 0.1rem 0.45rem;
+    border-bottom: 1px solid rgb(26 23 16 / 0.22);
+    overflow: hidden;
+    perspective: 320px;
+    text-align: right;
+  }
+
+  .ticket__reel {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transform-origin: 50% 0%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @keyframes ticket-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px) rotate(-2.2deg) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: rotate(-1.2deg) scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ticket,
+    .ticket.is-revealed {
+      transform: none;
+      animation: none;
+    }
   }
 </style>
 
 <script>
+  import {
+    labelAt,
+    labelRotation,
+    labelSize,
+    segmentPath,
+    shortLabel,
+    wheelColor,
+  } from '../lib/wheel'
+
   type SpinResponse = {
     spinId: string
     element: { id: string; name: string }
@@ -84,27 +270,38 @@ const canSpin = elements.length >= 2
 
   const SPIN_DURATION = 4000
   const FULL_TURNS = 4
+  const REEL_STEPS = 8
 
-  const panel = document.querySelector<HTMLElement>('.spin-panel')
+  const panel = document.querySelector<HTMLElement>('.spin-card')
   const svg = panel?.querySelector<SVGSVGElement>('.wheel__svg')
   const disc = panel?.querySelector<SVGGElement>('.wheel__disc')
-  const emptyRing = panel?.querySelector<SVGCircleElement>('.wheel__empty')
-  const legend = panel?.querySelector<HTMLUListElement>('.spin-legend')
+  const legend = panel?.querySelector<HTMLUListElement>('.legend')
+  const wheelCount = panel?.querySelector<HTMLSpanElement>('#wheel-count')
   const button = panel?.querySelector<HTMLButtonElement>('#spin-button')
   const warning = panel?.querySelector<HTMLParagraphElement>('#spin-warning')
   const status = panel?.querySelector<HTMLParagraphElement>('#spin-status')
-  const result = panel?.querySelector<HTMLParagraphElement>('#spin-result')
+  const ticket = panel?.querySelector<HTMLElement>('#spin-ticket')
+  const ticketElement = panel?.querySelector<HTMLParagraphElement>('#ticket-element')
+  const ticketSerial = panel?.querySelector<HTMLSpanElement>('#ticket-serial')
+  const ticketVariant = panel?.querySelector<HTMLDivElement>('#ticket-variant')
+  const ticketReel = panel?.querySelector<HTMLSpanElement>('#ticket-reel')
+  const announce = panel?.querySelector<HTMLParagraphElement>('#spin-announce')
 
   if (
     !panel?.dataset.categoryId ||
     !svg ||
     !disc ||
-    !emptyRing ||
     !legend ||
+    !wheelCount ||
     !button ||
     !warning ||
     !status ||
-    !result
+    !ticket ||
+    !ticketElement ||
+    !ticketSerial ||
+    !ticketVariant ||
+    !ticketReel ||
+    !announce
   ) {
     throw new Error('Faltan nodos del DOM para girar')
   }
@@ -117,35 +314,27 @@ const canSpin = elements.length >= 2
   let rotation = 0
   let elementCount = disc.querySelectorAll('[data-element-id]').length
 
+  const wait = (ms: number): Promise<void> =>
+    new Promise((resolve) => {
+      window.setTimeout(resolve, ms)
+    })
+
   function setEnabled(): void {
     const canSpin = elementCount >= 2
     warning.hidden = canSpin
     button.disabled = !canSpin || spinning
   }
 
-  // Misma geometría que la rueda renderizada en el servidor, para redibujarla
-  // cuando la lista de elementos cambia sin recargar la página.
-  function pointAt(angle: number, radius: number): { x: number; y: number } {
-    const radians = (angle * Math.PI) / 180
-    return { x: 100 + radius * Math.sin(radians), y: 100 - radius * Math.cos(radians) }
-  }
-
-  function segmentPath(index: number, step: number): string {
-    const start = pointAt(index * step, 100)
-    const end = pointAt((index + 1) * step, 100)
-    const largeArc = step > 180 ? 1 : 0
-
-    return `M 100 100 L ${start.x} ${start.y} A 100 100 0 ${largeArc} 1 ${end.x} ${end.y} Z`
-  }
-
   function renderWheel(elements: { id: string; name: string }[]): void {
     const step = elements.length > 0 ? 360 / elements.length : 360
+    const fontSize = labelSize(elements.length)
 
     disc.replaceChildren()
 
     elements.forEach((element, index) => {
-      const angle = (index + 0.5) * step
-      const label = pointAt(angle, 62)
+      const angle = index * step
+      const label = labelAt(index, step)
+      const color = wheelColor(index)
 
       const group = document.createElementNS(SVG_NS, 'g') as SVGGElement
       group.dataset.elementId = element.id
@@ -155,25 +344,28 @@ const canSpin = elements.length >= 2
 
       const path = document.createElementNS(SVG_NS, 'path')
       path.setAttribute('d', segmentPath(index, step))
-      path.setAttribute('fill', `var(--wheel-${(index % 6) + 1})`)
+      path.setAttribute('fill', color.fill)
+      path.setAttribute('stroke', 'var(--ink-700)')
+      path.setAttribute('stroke-width', '1')
 
       const text = document.createElementNS(SVG_NS, 'text')
       text.setAttribute('class', 'wheel__label')
       text.setAttribute('x', label.x.toFixed(2))
       text.setAttribute('y', label.y.toFixed(2))
+      text.setAttribute('fill', color.ink)
+      text.setAttribute('font-size', String(fontSize))
       text.setAttribute(
         'transform',
-        `rotate(${angle.toFixed(2)} ${label.x.toFixed(2)} ${label.y.toFixed(2)})`,
+        `rotate(${labelRotation(angle)} ${label.x.toFixed(2)} ${label.y.toFixed(2)})`,
       )
       text.setAttribute('text-anchor', 'middle')
       text.setAttribute('dominant-baseline', 'middle')
-      text.textContent = element.name.length > 12 ? `${element.name.slice(0, 11)}…` : element.name
+      text.textContent = shortLabel(element.name)
 
       group.append(title, path, text)
       disc.append(group)
     })
 
-    emptyRing.style.display = elements.length > 0 ? 'none' : ''
     const word = elements.length === 1 ? 'elemento' : 'elementos'
     svg.setAttribute('aria-label', `Ruleta con ${elements.length} ${word}`)
   }
@@ -181,6 +373,7 @@ const canSpin = elements.length >= 2
   function renderLegend(elements: { id: string; name: string }[]): void {
     const items = elements.map((element) => {
       const item = document.createElement('li')
+      item.className = 'legend__item'
       item.textContent = element.name
       return item
     })
@@ -193,7 +386,7 @@ const canSpin = elements.length >= 2
     const index = segments.findIndex((segment) => segment.dataset.elementId === elementId)
     const step = segments.length > 0 ? 360 / segments.length : 360
     const current = ((rotation % 360) + 360) % 360
-    const target = index === -1 ? current : ((-(index + 0.5) * step) % 360 + 360) % 360
+    const target = index === -1 ? current : (((-index * step) % 360) + 360) % 360
     const delta = ((target - current) % 360 + 360) % 360
 
     return rotation + delta + 360 * FULL_TURNS
@@ -226,10 +419,71 @@ const canSpin = elements.length >= 2
     })
   }
 
-  function showResult(payload: SpinResponse): void {
-    result.textContent = payload.variant
-      ? `${payload.element.name} · ${payload.variant.name}`
-      : payload.element.name
+  function variantNamesOf(elementId: string): string[] {
+    const item = document.querySelector<HTMLLIElement>(
+      `#element-list .element[data-id="${elementId}"]`,
+    )
+
+    return [...(item?.querySelectorAll('.variant__name') ?? [])]
+      .map((node) => node.textContent?.trim() ?? '')
+      .filter((name) => name.length > 0)
+  }
+
+  function shuffle<T>(items: T[]): T[] {
+    const copy = [...items]
+
+    for (let index = copy.length - 1; index > 0; index--) {
+      const swap = Math.floor(Math.random() * (index + 1))
+      ;[copy[index], copy[swap]] = [copy[swap]!, copy[index]!]
+    }
+
+    return copy
+  }
+
+  function reelSequence(names: string[], winner: string): string[] {
+    const steps: string[] = []
+    let pool: string[] = []
+
+    for (let index = 0; index < REEL_STEPS; index++) {
+      if (index % names.length === 0) pool = shuffle(names)
+      steps.push(pool[index % names.length]!)
+    }
+
+    if (steps[steps.length - 1] === winner) {
+      steps[steps.length - 1] = names.find((name) => name !== winner) ?? winner
+    }
+
+    return [...steps, winner]
+  }
+
+  function flip(node: HTMLElement): void {
+    node.animate(
+      [
+        { transform: 'rotateX(-80deg)', opacity: 0 },
+        { transform: 'rotateX(0deg)', opacity: 1 },
+      ],
+      { duration: 140, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' },
+    )
+  }
+
+  async function drawVariant(names: string[], winner: string): Promise<void> {
+    for (const [index, name] of reelSequence(names, winner).entries()) {
+      ticketReel.textContent = name
+      flip(ticketReel)
+      await wait(index === REEL_STEPS ? 180 : 70 + index * 14)
+    }
+  }
+
+  function showTicket(payload: SpinResponse): void {
+    ticketElement.textContent = payload.element.name
+    ticketSerial.textContent = `N.º ${payload.spinId.slice(0, 8).toUpperCase()}`
+    ticketVariant.hidden = !payload.variant
+    ticketReel.textContent = payload.variant ? payload.variant.name : ''
+
+    ticket.hidden = false
+    ticket.classList.remove('is-revealed')
+    void ticket.offsetWidth
+    ticket.classList.add('is-revealed')
   }
 
   async function spin(): Promise<void> {
@@ -237,7 +491,8 @@ const canSpin = elements.length >= 2
 
     spinning = true
     button.disabled = true
-    result.textContent = ''
+    ticket.hidden = true
+    announce.textContent = ''
     status.textContent = 'Girando…'
 
     let payload: SpinResponse
@@ -264,9 +519,19 @@ const canSpin = elements.length >= 2
     }
 
     await animate(payload.element.id)
+    showTicket(payload)
+
+    const names = payload.variant ? variantNamesOf(payload.element.id) : []
+
+    if (payload.variant && names.length >= 2 && !meta.matches) {
+      status.textContent = 'Sorteando variante…'
+      await drawVariant(names, payload.variant.name)
+    }
 
     status.textContent = ''
-    showResult(payload)
+    announce.textContent = payload.variant
+      ? `${payload.element.name}, variante ${payload.variant.name}`
+      : payload.element.name
     spinning = false
     setEnabled()
   }
@@ -280,6 +545,7 @@ const canSpin = elements.length >= 2
     const elements = detail?.elements ?? []
 
     elementCount = elements.length
+    wheelCount.textContent = `${elements.length} en la rueda`
     renderWheel(elements)
     renderLegend(elements)
     setEnabled()
